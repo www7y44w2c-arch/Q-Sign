@@ -1,4 +1,4 @@
-# BANK VERIFY AI — V1 prototype
+# S'kam (ex BANK VERIFY AI)
 
 Application web mobile-first (PWA) en HTML/CSS/JavaScript, sans dépendance ni API externe.
 

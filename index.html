@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#08111f" />
-  <meta name="description" content="BANK VERIFY AI — référentiel documentaire et entraînement antifraude." />
+  <meta name="theme-color" content="#0c0b0d" />
+  <meta name="description" content="S'kam — référentiel documentaire et entraînement antifraude." />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="styles.css" />
-  <title>BANK VERIFY AI</title>
+  <title>S'kam</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#home" aria-label="BANK VERIFY AI accueil">
+      <a class="brand" href="#home" aria-label="S'kam accueil">
         <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 6v5.5c0 5-3.4 8.2-8 9.7-4.6-1.5-8-4.7-8-9.7V6l8-3.2Z"/><path d="m8.4 12.1 2.3 2.3 4.9-5"/></svg></span>
-        <span><strong>BANK VERIFY</strong><small>DOCUMENT INTELLIGENCE</small></span>
+        <span><strong>S'kam</strong><small>VÉRIFICATION DOCUMENTAIRE</small></span>
       </a>
       <button class="icon-btn" id="installBtn" aria-label="Installer l'application" title="Installer" hidden>↓</button>
     </header>
@@ -33,6 +33,8 @@
           <button class="quick-card" data-go="checks"><span class="quick-icon violet">⌕</span><strong>Méthode de contrôle</strong><small>Suivre une démarche</small><span class="card-arrow">↗</span></button>
           <button class="quick-card" data-go="training"><span class="quick-icon amber">◎</span><strong>Entraînement</strong><small>Cas entièrement fictifs</small><span class="card-arrow">↗</span></button>
           <button class="quick-card" data-go="sources"><span class="quick-icon green">⌘</span><strong>Sources officielles</strong><small>Consulter les références</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="reference"><span class="quick-icon violet">✎</span><strong>Cas complexes</strong><small>Ta base de cas anonymisés</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="calcul"><span class="quick-icon amber">∑</span><strong>Calcul</strong><small>Cadence et paliers du mois</small><span class="card-arrow">↗</span></button>
         </div>
         <div class="section-head"><div><div class="eyebrow">À RETENIR</div><h2>Le bon réflexe</h2></div></div>
         <article class="insight-card"><div class="insight-symbol">!</div><div><strong>Une anomalie n'est pas une conclusion.</strong><p>Un signal doit être recoupé avec les procédures applicables et, si nécessaire, transmis au niveau de contrôle compétent.</p></div></article>
@@ -98,17 +100,32 @@
         <p class="lede">Choisis une zone, puis un pays, pour retrouver ses documents de référence et accéder aux spécimens officiels.</p>
         <div id="procBody"></div>
       </section>
+
+      <section class="view" id="view-calcul" data-view="calcul">
+        <div class="eyebrow">SUIVI DE PRODUCTION</div><h1>Ta cadence, <span>en chiffres.</span></h1>
+        <p class="lede">Saisis tes heures et tes dossiers chaque jour pour suivre ton objectif quotidien et ta progression vers les paliers du mois.</p>
+        <div id="calcBody"></div>
+      </section>
+
+      <section class="view" id="view-reference" data-view="reference">
+        <div class="eyebrow">RÉFÉRENCE</div><h1>Cas <span>complexes.</span></h1>
+        <p class="lede">Garde une trace des situations difficiles, anonymisées, pour t'en resservir comme référence.</p>
+        <div id="refBody"></div>
+      </section>
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
       <button class="nav-item active" data-nav="home"><span>⌂</span><small>Accueil</small></button>
-      <button class="nav-item" data-nav="library"><span>▤</span><small>Documents</small></button>
-      <button class="nav-item" data-nav="checks"><span>☷</span><small>Contrôles</small></button>
-      <button class="nav-item" data-nav="training"><span>◎</span><small>Formation</small></button>
       <button class="nav-item" data-nav="procedure"><span>◍</span><small>Procédure</small></button>
+      <button class="nav-item" data-nav="checks"><span>☷</span><small>Contrôles</small></button>
+      <button class="nav-item" data-nav="calcul"><span>∑</span><small>Calcul</small></button>
     </nav>
   </div>
   <script src="app.js"></script>
+  <script src="store.js"></script>
+  <script src="specimens.js"></script>
   <script src="procedure.js"></script>
+  <script src="calcul.js"></script>
+  <script src="reference.js"></script>
 </body>
 </html>
