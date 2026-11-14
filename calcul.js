@@ -21,7 +21,10 @@
   }
   const entry = d => data.days[d] || { h: 0, n: 0 };
   function setDay(d, patch) {
-    const v = Object.assign({ h: 0, n: 0 }, data.days[d], patch);
+    const prev = data.days[d] || { h: 0, n: 0 };
+    const v = Object.assign({ h: 0, n: 0 }, prev, patch);
+    // Temps réel : le chrono démarre tout seul au premier dossier du jour (heure du téléphone).
+    if (d === today() && patch.n !== undefined && patch.n > (prev.n || 0) && !v.start && !v.h) v.start = nowHM();
     v.n = Math.max(0, Math.round(v.n)); v.h = Math.max(0, Math.min(24, v.h));
     if (v.start === undefined) delete v.start;
     if (!v.h && !v.n && !v.start) delete data.days[d]; else data.days[d] = v;
@@ -55,7 +58,14 @@
   // API utilisée par l'accueil.
   window.SkamCalc = {
     today() { syncLive(); const t = today(), e = entry(t), h = hoursOf(t); return { n: e.n, h: Math.round(h * 10) / 10, target: Math.round(h * data.rate), pace: h ? fmt1(e.n / h) : '—' }; },
-    add(k) { const t = today(); setDay(t, { n: entry(t).n + k }); }
+    add(k) { const t = today(); setDay(t, { n: entry(t).n + k }); },
+    rate: () => data.rate,
+    tiers: () => data.tiers.slice(),
+    month() { syncLive(); return monthStats(today().slice(0, 7)); },
+    // 7 derniers jours (du plus ancien au plus récent), heures effectives.
+    week() { syncLive(); return Array.from({ length: 7 }, (_, i) => { const d = shiftDay(today(), i - 6), e = entry(d), h = hoursOf(d); return { d, n: e.n, h, target: Math.round(h * data.rate) }; }); },
+    running: () => !!entry(today()).start,
+    start: () => entry(today()).start || null
   };
 
   let view = 'day', day = today(), month = today().slice(0, 7), buf = '', flash = '', clock = null;
@@ -75,7 +85,7 @@
   const KEYS = [
     ['C', 'clear', 'k-fn'], ['⌫', 'back', 'k-fn'], ['⏱', 'start', 'k-fn'], ['−', 'sub', 'k-op'],
     ['7', '7'], ['8', '8'], ['9', '9'], ['+', 'add', 'k-op'],
-    ['4', '4'], ['5', '5'], ['6', '6'], ['h', 'hours', 'k-op'],
+    ['4', '4'], ['5', '5'], ['6', '6'], ['HOURS'],
     ['1', '1'], ['2', '2'], ['3', '3'], ['=', 'set', 'k-op'],
     ['0', '0', 'k-wide'], [',', 'comma'], ['+1', 'plus1', 'k-eq']
   ];
@@ -98,11 +108,12 @@
         <div><small>Écart</small><strong class="mono ${diff >= 0 ? 'good' : 'warn'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</strong></div>
       </div>
       <span class="meter"><span style="width:${target ? Math.min(100, e.n / target * 100) : 0}%"></span></span>
-      <div class="lcd-foot small muted">${e.start ? `Début ${e.start}${live ? ' · chrono en cours' : ''}` : 'Saisis un nombre puis + − = ou h · ⏱ démarre la journée'}</div>
+      <div class="lcd-foot small muted">${day !== today() ? 'Jour passé : saisis les heures puis h' : live ? `Début ${e.start} · temps réel (heure du téléphone)` : e.start === undefined && e.h ? 'Journée terminée · ⏱ pour reprendre' : 'Le chrono démarre au 1er dossier · ⏱ règle l’heure de début'}</div>
     </div>`;
   }
   function dayHtml() {
-    return `${displayHtml()}<div class="keypad">${KEYS.map(([label, k, cls]) => `<button class="key ${cls || ''}" data-key="${k}" aria-label="${{ clear: 'Effacer la saisie', back: 'Effacer le dernier chiffre', start: 'Début de journée', sub: 'Retirer du total', add: 'Ajouter au total', hours: 'Fixer les heures', set: 'Fixer le total', plus1: 'Plus un dossier', comma: 'Virgule' }[k] || label}">${label}</button>`).join('')}</div>`;
+    const keys = KEYS.map(x => x[0] !== 'HOURS' ? x : day === today() ? ['⏹', 'stop', 'k-op'] : ['h', 'hours', 'k-op']);
+    return `${displayHtml()}<div class="keypad">${keys.map(([label, k, cls]) => `<button class="key ${cls || ''}" data-key="${k}" aria-label="${{ clear: 'Effacer la saisie', back: 'Effacer le dernier chiffre', start: 'Début de journée', sub: 'Retirer du total', add: 'Ajouter au total', hours: 'Fixer les heures', stop: 'Terminer la journée', set: 'Fixer le total', plus1: 'Plus un dossier', comma: 'Virgule' }[k] || label}">${label}</button>`).join('')}</div>`;
   }
   function updateDisplay() {
     const lcd = body.querySelector('#lcd'); if (!lcd) return;
@@ -132,6 +143,9 @@
     } else if (k === 'hours') {
       if (!buf) { flash = 'Saisis les heures, ex. 7,5'; }
       else { const v = Math.min(24, num()); setDay(day, { h: v, start: undefined }); delete (data.days[day] || {}).start; save(); flash = `${fmt1(v)} h`; buf = ''; }
+    } else if (k === 'stop') {
+      if (e.start) { syncLive(); const d = data.days[day]; delete d.start; save(); flash = `Journée terminée à ${nowHM()}`; }
+      else flash = 'Pas de chrono en cours';
     } else if (k === 'start') {
       if (day !== today()) { flash = 'Le chrono ne marche que pour aujourd\'hui'; }
       else if (buf) {
@@ -143,7 +157,7 @@
         if (hh > 23 || mm > 59) flash = 'Heure invalide';
         else { const start = `${pad(hh)}:${pad(mm)}`; if (toMin(start) > toMin(nowHM())) flash = 'Heure dans le futur'; else { setDay(day, { start }); syncLive(); flash = `Début ${start}`; } }
         buf = '';
-      } else if (e.start) { syncLive(); const d = data.days[day]; delete d.start; save(); flash = 'Chrono arrêté'; }
+      } else if (e.start) { flash = `Début ${e.start} · tape 830 puis ⏱ pour corriger`; }
       else { setDay(day, { start: nowHM() }); flash = `Début ${nowHM()}`; }
     }
     updateDisplay();
@@ -231,5 +245,5 @@
     if (document.visibilityState !== 'visible') return;
     const t = today(); if (t !== lastToday) { if (day === lastToday) day = t; month = t.slice(0, 7); lastToday = t; if (App.current === 'calcul') render(); }
   });
-  App.on('calcul', () => { day = today(); month = day.slice(0, 7); buf = ''; flash = ''; syncLive(); render(); });
+  App.on('calcul', opts => { day = today(); month = day.slice(0, 7); buf = ''; flash = ''; view = opts.view === 'month' ? 'month' : 'day'; syncLive(); render(); });
 })();

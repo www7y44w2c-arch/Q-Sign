@@ -42,25 +42,70 @@ window.App = (() => {
   return { go, header, sheet, closeSheet, on: (name, fn) => { enter[name] = fn; }, get current() { return current; } };
 })();
 
-// ---------- Accueil ----------
+// ---------- Accueil : tableau de bord ----------
 (() => {
   const $ = s => document.querySelector(s);
+  const fmt = n => Math.round(n).toLocaleString('fr-FR');
+  const fmt1 = n => (Math.round(n * 10) / 10).toLocaleString('fr-FR');
+  const pad = n => String(n).padStart(2, '0');
+  let tick = null, selected = 6;
+
   function render() {
-    const c = window.SkamCalc && window.SkamCalc.today();
-    const d = new Date();
-    $('#homeDate').textContent = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (!c) return;
-    $('#homeCount').textContent = c.n.toLocaleString('fr-FR');
-    $('#homeTarget').textContent = c.target ? `/ ${c.target.toLocaleString('fr-FR')}` : '/ — h';
-    $('#homeRate').textContent = c.h ? `${c.h.toLocaleString('fr-FR')} h · ${c.pace}/h` : 'heures à saisir';
-    $('#homeBar').style.width = `${c.target ? Math.min(100, c.n / c.target * 100) : 0}%`;
+    const C = window.SkamCalc; if (!C) return;
+    const now = new Date();
+    $('#homeDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#homeClock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    // Aujourd'hui
+    const t = C.today();
+    $('#homeCount').textContent = fmt(t.n);
+    $('#homeHours').textContent = t.h ? `${fmt1(t.h)} h` : '—';
+    $('#homePace').textContent = t.h ? t.pace : '—';
+    $('#homePct').textContent = t.target ? `${Math.round(t.n / t.target * 100)} %` : '—';
+    $('#homeBar').style.width = `${t.target ? Math.min(100, t.n / t.target * 100) : 0}%`;
+    $('#homeStatus').textContent = C.running() ? `⏱ depuis ${C.start()}` : t.n ? 'journée terminée' : 'pas commencé';
+
+    // Mois : total, prochain palier, projection
+    const m = C.month(), tiers = C.tiers(), max = Math.max(...tiers, m.total, 1);
+    const next = tiers.find(x => x > m.total);
+    $('#homeMonthLabel').textContent = now.toLocaleDateString('fr-FR', { month: 'long' }).toUpperCase();
+    $('#homeMonthTotal').textContent = fmt(m.total);
+    $('#homeMonthOf').textContent = next ? `/ ${fmt(next)}` : 'tous paliers atteints';
+    $('#homeNext').textContent = next ? (m.remaining ? `${fmt((next - m.total) / m.remaining)}/jour pour P${tiers.indexOf(next) + 1}` : `reste ${fmt(next - m.total)}`) : '✓ P3 atteint';
+    $('#homeTierFill').style.width = `${Math.min(100, m.total / max * 100)}%`;
+    const box = $('#homeTiers');
+    box.querySelectorAll('.tm-tick').forEach(x => x.remove());
+    tiers.forEach((x, i) => box.insertAdjacentHTML('beforeend', `<span class="tm-tick ${m.total >= x ? 'hit' : ''}" style="left:${x / max * 100}%"><i></i><b class="mono">P${i + 1}</b></span>`));
+    $('#homeProj').textContent = fmt(m.projection);
+    $('#homeAvg').textContent = m.worked ? fmt(m.perDay) : '—';
+    $('#homeDays').textContent = `${m.worked}/${m.planned}`;
+
+    // 7 derniers jours : barres + objectif du jour en pointillé
+    const w = C.week(), top = Math.max(1, ...w.map(x => Math.max(x.n, x.target)));
+    $('#homeWeekTotal').textContent = `${fmt(w.reduce((s, x) => s + x.n, 0))} dossiers`;
+    $('#homeWeek').innerHTML = w.map((x, i) => {
+      const lbl = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'narrow' });
+      return `<button class="wk-col ${i === selected ? 'sel' : ''}" role="listitem" data-i="${i}" aria-label="${new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })} : ${x.n} dossiers${x.target ? `, objectif ${x.target}` : ''}">
+        <span class="wk-area">${x.target ? `<span class="wk-target" style="bottom:${x.target / top * 100}%"></span>` : ''}<span class="wk-bar" style="height:${x.n ? Math.max(3, x.n / top * 100) : 0}%"></span></span>
+        <span class="wk-lbl mono">${i === 6 ? 'auj' : lbl}</span></button>`;
+    }).join('');
+    const showDetail = i => {
+      const x = w[i], d = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+      $('#homeWeekDetail').innerHTML = `<b>${d}</b> · ${fmt(x.n)} dossiers${x.h ? ` · ${fmt1(x.h)} h · ${fmt1(x.n / x.h)}/h` : ''}${x.target ? ` · objectif ${fmt(x.target)}` : ''}`;
+    };
+    $('#homeWeek').querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { selected = Number(b.dataset.i); $('#homeWeek').querySelectorAll('.wk-col').forEach(c => c.classList.toggle('sel', c === b)); showDetail(selected); }));
+    if (selected !== 6 || t.n) showDetail(selected);
   }
-  const add = n => { if (window.SkamCalc) { window.SkamCalc.add(n); render(); } };
-  $('#homePlus').addEventListener('click', () => add(1));
-  $('#homePlus10').addEventListener('click', () => add(10));
-  $('#homeMinus').addEventListener('click', () => add(-1));
-  $('#homeToday').addEventListener('click', () => App.go('calcul'));
-  App.on('home', render);
+
+  $('#homePlus').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.add(1); render(); });
+  const open = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
+  open($('#homeToday'), () => App.go('calcul'));
+  open($('#homeMonth'), () => App.go('calcul', { view: 'month' }));
+  App.on('home', () => {
+    selected = 6; render();
+    clearInterval(tick);
+    tick = setInterval(() => { if (App.current !== 'home' || document.hidden) return; render(); }, 20000);
+  });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && App.current === 'home') render(); });
 })();
 
