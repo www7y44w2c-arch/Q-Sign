@@ -62,6 +62,20 @@ window.SPECIMENS = {
     "page": "https://commons.wikimedia.org/wiki/File:Dutch_identity_card_front_specimen_issued_9_March_2014.jpg",
     "license": "CC0",
     "artist": "Rijksdienst voor Identiteitsgegevens (RvIG)"
+   },
+   {
+    "label": "Recto · modèle 2021",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Nederlandse_identiteitskaart_2021-II_%28Voorkant%29.jpg/960px-Nederlandse_identiteitskaart_2021-II_%28Voorkant%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Nederlandse_identiteitskaart_2021-II_(Voorkant).jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Rijksdienst voor Identiteitsgegevens (RvIG)"
+   },
+   {
+    "label": "Verso · modèle 2021",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5a/Nederlandse_identiteitskaart_2021-II_%28Rug%29.jpg/960px-Nederlandse_identiteitskaart_2021-II_%28Rug%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Nederlandse_identiteitskaart_2021-II_(Rug).jpg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Rijksdienst voor Identiteitsgegevens (RvIG)"
    }
   ]
  },
@@ -304,6 +318,13 @@ window.SPECIMENS = {
     "page": "https://commons.wikimedia.org/wiki/File:Reisepass_Specimen.jpg",
     "license": "Public domain",
     "artist": "Bundesdruckerei"
+   },
+   {
+    "label": "Page de données · modèle 2017",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/3/37/Mustermann_Reisepass_2017.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Mustermann_Reisepass_2017.jpg",
+    "license": "Public domain",
+    "artist": "Bundesrepublik Deutschland, Bundesministerium des Innern"
    }
   ],
   "id": [
@@ -380,6 +401,15 @@ window.SPECIMENS = {
     "license": "CC BY-SA 4.0",
     "artist": "Dellagatta728"
    }
+  ],
+  "id": [
+   {
+    "label": "Nouvelle carte d'identité (CIN)",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Novo-modelo-Carteira-Identidade-RG-Brasil-2022-modelo-cartao-plastico.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Novo-modelo-Carteira-Identidade-RG-Brasil-2022-modelo-cartao-plastico.png",
+    "license": "Public domain",
+    "artist": "Governo Brasileiro (Brazilian Government)"
+   }
   ]
  },
  "PSE": {
@@ -448,6 +478,93 @@ window.SPECIMENS = {
     "page": "https://commons.wikimedia.org/wiki/File:New_Romanian_ID_Card_(2021).png",
     "license": "Public domain",
     "artist": "Government of HALA8 October 2021"
+   }
+  ]
+ },
+ "SRB": {
+  "passport": [
+   {
+    "label": "Page de données (biométrique)",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Passport_of_Serbia_ID1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Passport_of_Serbia_ID1.jpg",
+    "license": "Public domain",
+    "artist": "Ministry of the Interior"
+   }
+  ]
+ },
+ "POL": {
+  "id": [
+   {
+    "label": "Recto · modèle 2021",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1c/Dowod-osobisty-wzorzec-2021-awers.png/960px-Dowod-osobisty-wzorzec-2021-awers.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Dowod-osobisty-wzorzec-2021-awers.png",
+    "license": "Public domain",
+    "artist": "Government of Poland"
+   },
+   {
+    "label": "Verso · modèle 2021",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Dowod-osobisty-wzorzec-2021-rewers.png/960px-Dowod-osobisty-wzorzec-2021-rewers.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Dowod-osobisty-wzorzec-2021-rewers.png",
+    "license": "Public domain",
+    "artist": "Government of Poland"
+   }
+  ]
+ },
+ "QAT": {
+  "id": [
+   {
+    "label": "Recto",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Qatar_identity_document_specimen.jpg/960px-Qatar_identity_document_specimen.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Qatar_identity_document_specimen.jpg",
+    "license": "Public domain",
+    "artist": "Government of Qatar"
+   },
+   {
+    "label": "Verso",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Qatar_identity_document_specimen_reverse.jpg/960px-Qatar_identity_document_specimen_reverse.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Qatar_identity_document_specimen_reverse.jpg",
+    "license": "Public domain",
+    "artist": "Government of Qatar"
+   }
+  ]
+ },
+ "PHL": {
+  "id": [
+   {
+    "label": "Carte PhilSys",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/3/34/Philippine_Identification_System_%28PhilSys%29_card_sample.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Philippine_Identification_System_(PhilSys)_card_sample.png",
+    "license": "Public domain",
+    "artist": "Philippine Statistics"
+   }
+  ]
+ },
+ "IND": {
+  "id": [
+   {
+    "label": "Carte Aadhaar (2024)",
+    "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Specimen_of_an_Aadhaar_Card_2024.png/960px-Specimen_of_an_Aadhaar_Card_2024.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "page": "https://commons.wikimedia.org/wiki/File:Specimen_of_an_Aadhaar_Card_2024.png",
+    "license": "CC BY-SA 4.0",
+    "artist": "SayantanDhara"
+   }
+  ]
+ },
+ "ARG": {
+  "id": [
+   {
+    "label": "DNI biométrique · recto (2023)",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Biometric_Argentine_DNI_for_Citizens-Foreigners.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Biometric_Argentine_DNI_for_Citizens-Foreigners.png",
+    "license": "CC BY 4.0",
+    "artist": "Argentina portal"
+   },
+   {
+    "label": "DNI biométrique · verso (2023)",
+    "thumb": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Biometric_Argentine_DNI_for_Citizens-Foreigners_back.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "page": "https://commons.wikimedia.org/wiki/File:Biometric_Argentine_DNI_for_Citizens-Foreigners_back.png",
+    "license": "CC BY 4.0",
+    "artist": "Argentina Government"
    }
   ]
  }
