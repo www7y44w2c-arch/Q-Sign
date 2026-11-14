@@ -48,14 +48,17 @@ window.App = (() => {
   }
 
   // Panneau qui monte du bas (formulaires, réglages, historique).
-  function sheet(title, html) {
+  // onClose : appelé une fois à la fermeture, quel que soit le moyen (✕, fond, Échap, changement d'écran).
+  let onClose = null;
+  function sheet(title, html, close) {
+    onClose = close || null;
     $('#sheetTitle').textContent = title;
     $('#sheetBody').innerHTML = html;
     $('#sheet').hidden = false;
     $('#sheetBody').scrollTop = 0;
     return $('#sheetBody');
   }
-  function closeSheet() { $('#sheet').hidden = true; $('#sheetBody').innerHTML = ''; }
+  function closeSheet() { $('#sheet').hidden = true; $('#sheetBody').innerHTML = ''; const f = onClose; onClose = null; if (f) f(); }
   document.querySelectorAll('#sheet [data-close]').forEach(el => el.addEventListener('click', closeSheet));
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
 
@@ -202,12 +205,22 @@ window.App = (() => {
   const cases = [
     { title: 'Une information discordante', description: "Deux éléments d'un dossier fictif présentent une différence d'orthographe sur le nom. Aucun autre élément n'est fourni.", answers: ['Conclure immédiatement à une fraude.', 'Comparer les éléments, chercher une explication documentée et appliquer la procédure.', 'Ignorer la différence.'], correct: 1, feedback: "Une discordance est un signal à examiner : on recoupe et on applique la procédure, sans conclure sur un seul indice." },
     { title: 'Une référence incertaine', description: 'Une fiche trouvée en ligne ne précise ni sa date de mise à jour ni la version du document concerné.', answers: ['L\'utiliser, elle apparaît dans un moteur de recherche.', 'Chercher une source officielle et confirmer version et période.', 'Considérer que toutes les versions sont identiques.'], correct: 1, feedback: 'La provenance, la date et le périmètre de la référence sont essentiels.' },
-    { title: 'Un contrôle non concluant', description: "Un contrôle visuel autorisé ne permet pas de confirmer un élément attendu. L'image est de qualité moyenne.", answers: ['Classer le document comme faux.', 'Demander ou effectuer une vérification complémentaire selon la procédure.', "Se fier à l'apparence générale."], correct: 1, feedback: "Un contrôle non concluant n'est pas une preuve de fraude : on suit le circuit de vérification complémentaire." }
+    { title: 'Un contrôle non concluant', description: "Un contrôle visuel autorisé ne permet pas de confirmer un élément attendu. L'image est de qualité moyenne.", answers: ['Classer le document comme faux.', 'Demander ou effectuer une vérification complémentaire selon la procédure.', "Se fier à l'apparence générale."], correct: 1, feedback: "Un contrôle non concluant n'est pas une preuve de fraude : on suit le circuit de vérification complémentaire." },
+    { title: 'Une pièce photographiée sur un écran', description: "La carte d'identité transmise semble être une photo prise sur un écran : bords d'écran visibles, motif de moiré sur l'image.", answers: ["La valider : toutes les informations sont lisibles.", "Ne pas la valider en l'état et appliquer la procédure prévue (nouvelle capture de l'original ou escalade).", 'Accuser le client de fraude dans le motif.'], correct: 1, feedback: "Une reproduction (écran, photocopie) n'est pas l'original : on ne peut pas la contrôler correctement. On redemande ou on escalade selon la procédure, avec un motif factuel, sans accusation." },
+    { title: 'Une CNI expirée', description: "Une carte d'identité française délivrée à un majeur en 2012 affiche une date d'expiration dépassée.", answers: ['La refuser immédiatement : la date est dépassée.', "Vérifier les règles de prolongation applicables à cette carte, puis appliquer ce que la procédure accepte.", "L'accepter sans vérifier : les cartes françaises sont toujours valables."], correct: 1, feedback: "Les CNI sécurisées délivrées à des majeurs entre 2004 et 2013 sont valables 15 ans malgré la date imprimée. Mais chaque procédure fixe ce qu'elle accepte : on vérifie la règle avant de conclure." },
+    { title: 'MRZ et zone visuelle', description: 'La date de naissance lue dans la bande MRZ ne correspond pas à celle imprimée dans la zone visuelle.', answers: ['Corriger soi-même la saisie avec la date la plus probable.', 'Ignorer : la MRZ est souvent mal lue.', "Traiter l'incohérence comme un signal fort : vérifier la lecture, puis escalader selon la procédure."], correct: 2, feedback: "MRZ et zone visuelle doivent concorder. Après avoir écarté une erreur de lecture, une discordance réelle se traite par le circuit d'escalade, jamais par une correction de l'opérateur." },
+    { title: 'Un justificatif ancien', description: 'Le justificatif de domicile date de 7 mois. La règle du parcours demande un document de moins de 3 mois.', answers: ['Le valider : l’adresse est sûrement la même.', 'Demander un justificatif conforme à la règle de date, selon la procédure.', 'Modifier la date dans la saisie.'], correct: 1, feedback: "La règle de date fait partie des critères de recevabilité. On ne l'assouplit pas soi-même : on redemande une pièce conforme." },
+    { title: "Un nom d'usage", description: 'Le nom sur la pièce d’identité diffère de celui du justificatif de domicile. Le prénom, la date de naissance et l’adresse concordent.', answers: ['Conclure à une usurpation d’identité.', "Chercher une explication documentée (nom d'usage, mention sur la pièce) et appliquer ce que la procédure prévoit.", 'Valider sans rien noter.'], correct: 1, feedback: "Un nom d'usage (mariage, par exemple) explique souvent l'écart. On cherche l'élément qui le justifie et on trace sa décision." },
+    { title: 'Selfie difficile à comparer', description: 'Le selfie est sombre et légèrement flou : la comparaison avec la photo de la pièce ne permet pas de conclure.', answers: ['Valider : la personne a l’air de correspondre.', 'Refuser : ce n’est pas la même personne.', 'Ne pas trancher sur une capture insuffisante : nouvelle capture ou escalade selon la procédure.'], correct: 2, feedback: "Une capture de mauvaise qualité ne permet ni de valider ni de refuser. On obtient une capture exploitable ou on passe la main." },
+    { title: 'Un dossier pressé', description: "Une note du dossier indique que le client est « très pressé » et demande une validation rapide.", answers: ['Accélérer en sautant une étape de contrôle.', 'Appliquer la procédure complète, comme pour tout dossier.', 'Valider pour satisfaire le client et contrôler plus tard.'], correct: 1, feedback: "L'urgence n'est pas un critère de validation. Une pression inhabituelle est même un signal à garder en tête." },
+    { title: "S'entraîner avec de vrais dossiers ?", description: "Un collègue propose d'enregistrer dans S'kam des captures de vrais dossiers pour s'entraîner.", answers: ['Bonne idée, en floutant un peu les noms.', "Refuser : aucune donnée client réelle hors des outils autorisés. Spécimens et cas fictifs uniquement.", 'D’accord si ça reste sur le téléphone.'], correct: 1, feedback: "Les données des clients restent dans les outils de l'entreprise. S'kam ne contient que des spécimens publics et des cas fictifs ou anonymisés." }
   ];
-  let i = 0, score = 0, done = false;
+  // Mélange l'ordre des réponses à chaque affichage (la bonne n'est pas toujours au même endroit).
+  const shuffle = c => { const idx = c.answers.map((_, k) => k); for (let k = idx.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [idx[k], idx[j]] = [idx[j], idx[k]]; } return { ...c, answers: idx.map(k => c.answers[k]), correct: idx.indexOf(c.correct) }; };
+  let i = 0, score = 0, done = false, cur = null;
   const label = () => `${score} bonne${score > 1 ? 's' : ''} réponse${score > 1 ? 's' : ''}`;
   function render() {
-    const c = cases[i];
+    const c = cur = shuffle(cases[i]);
     $('#caseNumber').textContent = `${i + 1} / ${cases.length}`;
     $('#caseTitle').textContent = c.title;
     $('#caseDescription').textContent = c.description;
@@ -219,7 +232,7 @@ window.App = (() => {
   }
   function answer(n) {
     if (done) return; done = true;
-    const c = cases[i];
+    const c = cur;
     document.querySelectorAll('[data-answer]').forEach((b, k) => { b.disabled = true; if (k === c.correct) b.classList.add('ok'); else if (k === n) b.classList.add('ko'); });
     if (n === c.correct) score++;
     $('#feedback').textContent = (n === c.correct ? 'Bonne réponse. ' : 'À retenir. ') + c.feedback;

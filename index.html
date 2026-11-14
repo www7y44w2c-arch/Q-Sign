@@ -76,17 +76,18 @@
 
       <!-- CONTRÔLES -->
       <section class="screen" data-screen="checks">
-        <div class="pad stack">
-          <p class="lead">Méthode générale, à adapter aux consignes de ton établissement.</p>
-          <div class="steps" id="checkSteps">
-            <label class="step"><input type="checkbox"><span class="step-n mono">01</span><span><strong>Identifier le document</strong><small>Type, pays, version, contexte.</small></span></label>
-            <label class="step"><input type="checkbox"><span class="step-n mono">02</span><span><strong>Consulter la référence</strong><small>Fiche du bon pays, type et période.</small></span></label>
-            <label class="step"><input type="checkbox"><span class="step-n mono">03</span><span><strong>Contrôles autorisés</strong><small>Selon les procédures et outils internes.</small></span></label>
-            <label class="step"><input type="checkbox"><span class="step-n mono">04</span><span><strong>Recouper</strong><small>Ne jamais conclure sur un seul indice.</small></span></label>
-            <label class="step"><input type="checkbox"><span class="step-n mono">05</span><span><strong>Tracer et escalader</strong><small>Documenter, seconde vérification si besoin.</small></span></label>
+        <div class="pad stack fill">
+          <p class="lead">Repère de vérification à distance. La procédure et les outils en vigueur priment toujours.</p>
+          <div class="steps scroll" id="checkSteps">
+            <label class="step"><input type="checkbox"><span class="step-n mono">01</span><span><strong>Recevabilité de la pièce</strong><small>Type accepté, original (pas une copie ni un écran), complet, lisible, en cours de validité.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">02</span><span><strong>Comparer à la référence</strong><small>Spécimen du bon pays, type et version (onglet Procédure, PRADO).</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">03</span><span><strong>Cohérence interne</strong><small>Dates logiques entre elles ; zone MRZ cohérente avec la zone visuelle.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">04</span><span><strong>Cohérence du dossier</strong><small>Mêmes nom, date de naissance, adresse sur toutes les pièces et la saisie.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">05</span><span><strong>La personne</strong><small>Correspondance photo / selfie ou vidéo, quand le parcours le prévoit.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">06</span><span><strong>Décider et tracer</strong><small>Valider, redemander une pièce ou escalader, selon la procédure. Motif factuel.</small></span></label>
           </div>
           <button class="btn btn-primary" id="checksDone">✓ Dossier contrôlé · +1</button>
-          <p class="foot">Une anomalie n'est pas une conclusion : recoupe et applique le circuit prévu.</p>
+          <p class="foot">Un indice isolé n'est pas une conclusion : recoupe, et en cas de doute, escalade.</p>
         </div>
       </section>
 
@@ -98,9 +99,9 @@
 
       <!-- FORMATION -->
       <section class="screen" data-screen="training">
-        <div class="pad stack">
-          <div class="card train">
-            <div class="row"><span class="chip mono" id="caseNumber">1 / 3</span><span class="chip chip-warn">CAS FICTIF</span></div>
+        <div class="pad stack fill">
+          <div class="card train scroll">
+            <div class="row"><span class="chip mono" id="caseNumber">1 / 11</span><span class="chip chip-warn">CAS FICTIF</span></div>
             <h3 id="caseTitle"></h3>
             <p id="caseDescription" class="muted"></p>
             <div class="answers" id="answers"></div>
@@ -115,7 +116,9 @@
       <section class="screen" data-screen="sources">
         <div class="pad stack">
           <a class="item" href="https://www.consilium.europa.eu/prado/fr/" target="_blank" rel="noopener"><span class="item-ic mono">EU</span><span class="item-txt"><strong>PRADO</strong><small>Registre public des documents d'identité et de voyage</small></span><span class="item-go">↗</span></a>
-          <a class="item" href="https://www.icao.int/publications/pages/publication.aspx?docnum=9303" target="_blank" rel="noopener"><span class="item-ic mono">OACI</span><span class="item-txt"><strong>Doc 9303</strong><small>Normes des documents de voyage lisibles à la machine</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://www.icao.int/publications/doc-series/doc-9303" target="_blank" rel="noopener"><span class="item-ic mono">OACI</span><span class="item-txt"><strong>Doc 9303</strong><small>Normes des documents de voyage lisibles à la machine (MRZ)</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://cyber.gouv.fr/prestataires-de-verification-didentite-distance-pvid" target="_blank" rel="noopener"><span class="item-ic mono">ANSSI</span><span class="item-txt"><strong>PVID</strong><small>Cadre de la vérification d'identité à distance</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://ants.gouv.fr/" target="_blank" rel="noopener"><span class="item-ic mono">ANTS</span><span class="item-txt"><strong>ANTS</strong><small>Titres français : CNI, passeport, permis</small></span><span class="item-go">↗</span></a>
           <a class="item" href="https://www.service-public.fr/" target="_blank" rel="noopener"><span class="item-ic mono">FR</span><span class="item-txt"><strong>Service-Public.fr</strong><small>Titres de séjour et démarches françaises</small></span><span class="item-go">↗</span></a>
           <a class="item" href="https://www.frontex.europa.eu/" target="_blank" rel="noopener"><span class="item-ic mono">FX</span><span class="item-txt"><strong>Frontex</strong><small>Gestion des frontières et fraude documentaire</small></span><span class="item-go">↗</span></a>
           <p class="foot">Vérifie toujours la date et la portée de chaque source.</p>
