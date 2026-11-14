@@ -161,7 +161,7 @@
         <div><small>Écart</small><strong class="mono ${diff >= 0 ? 'good' : 'warn'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</strong></div>
       </div>
       <span class="meter"><span style="width:${target ? Math.min(100, e.n / target * 100) : 0}%"></span></span>
-      <div class="lcd-foot small muted">${statusLine()}</div>
+      <button class="lcd-foot" id="shiftEdit" aria-label="Modifier les horaires et les pauses"><span>${statusLine()}</span><span class="edit-hint">✎ horaires</span></button>
     </div>`;
   }
   const LABELS = { clear: 'Effacer la saisie', back: 'Effacer le dernier chiffre', sub: 'Retirer du total', add: 'Ajouter au total', hours: 'Fixer les heures', stop: 'Fin de shift', set: 'Fixer le total', plus1: 'Plus un dossier', comma: 'Virgule', chrono: 'Démarrer, mettre en pause ou reprendre le chrono' };
@@ -183,6 +183,7 @@
   }
   function bindDisplay() {
     body.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => { day = shiftDay(day, Number(b.dataset.d)); if (day > today()) day = today(); buf = ''; flash = ''; updateDisplay(); }));
+    body.querySelector('#shiftEdit').addEventListener('click', openShift);
     const date = body.querySelector('#calcDate');
     date.addEventListener('change', () => { if (date.value && date.value <= today()) { day = date.value; buf = ''; flash = ''; updateDisplay(); } });
   }
@@ -255,6 +256,61 @@
     body.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { month = shiftMonth(month, Number(b.dataset.m)); render(); }));
     body.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => { const m = monthStats(month); data.planned[month] = Math.max(0, Math.min(31, m.planned + Number(b.dataset.p))); save(); render(); }));
     body.querySelector('#calcHistory').addEventListener('click', openHistory);
+  }
+
+  // Correction des horaires : périodes travaillées, les trous entre elles sont des pauses.
+  function openShift() {
+    const d = day, isToday = d === today();
+    const had = segs(d).length > 0;
+    const list = segs(d).map(g => ({ s: g.s, e: g.e || '' }));
+    const el = App.sheet(`Horaires · ${dayLabel(d)}`, '<div class="form" id="segForm"></div>');
+    const check = () => {
+      const now = toMin(nowHM());
+      for (let i = 0; i < list.length; i++) {
+        const g = list[i], last = i === list.length - 1;
+        if (!g.s) return `Période ${i + 1} : heure de début manquante`;
+        if (!g.e && !(last && isToday)) return `Période ${i + 1} : heure de fin manquante`;
+        if (g.e && toMin(g.e) <= toMin(g.s)) return `Période ${i + 1} : la fin doit être après le début`;
+        if (isToday && (toMin(g.s) > now || (g.e && toMin(g.e) > now))) return `Période ${i + 1} : heure dans le futur`;
+        if (i && toMin(g.s) < toMin(list[i - 1].e || '00:00')) return `Période ${i + 1} : chevauche la précédente`;
+      }
+      return '';
+    };
+    const minutes = () => list.reduce((t, g) => t + (g.s && (g.e || isToday) ? Math.max(0, toMin(g.e || nowHM()) - toMin(g.s)) : 0), 0);
+    const pauses = () => list.reduce((t, g, i) => i && list[i - 1].e && g.s ? t + Math.max(0, toMin(g.s) - toMin(list[i - 1].e)) : t, 0);
+    const refresh = () => {
+      const err = check();
+      el.querySelector('#segSum').textContent = `Travaillé : ${fmtDur(minutes())}${pauses() ? ` · pauses : ${fmtDur(pauses())}` : ''}`;
+      el.querySelector('#segErr').textContent = err;
+      el.querySelector('#segSave').disabled = !!err;
+    };
+    const draw = () => {
+      el.querySelector('#segForm').innerHTML = `
+        <p class="foot">Chaque ligne est une période de travail ; l’écart entre deux lignes est une pause, déduite des heures.${isToday ? ' Laisse la dernière fin vide si tu travailles encore.' : ''}</p>
+        ${list.map((g, i) => `<div class="seg-row"><span class="mono muted">${i + 1}</span><input type="time" data-i="${i}" data-k="s" value="${g.s}" aria-label="Début de la période ${i + 1}" /><span class="muted">→</span><input type="time" data-i="${i}" data-k="e" value="${g.e}" aria-label="Fin de la période ${i + 1}" /><button type="button" class="btn icon" data-rm="${i}" aria-label="Supprimer la période ${i + 1}">✕</button></div>`).join('') || '<p class="empty">Aucune période enregistrée.</p>'}
+        <button type="button" class="btn" id="segAdd">+ Ajouter une période</button>
+        <p class="small" id="segSum"></p><p class="small warn" id="segErr"></p>
+        <button type="button" class="btn btn-primary" id="segSave">Enregistrer</button>`;
+      el.querySelectorAll('input[type=time]').forEach(inp => inp.addEventListener('input', () => { list[inp.dataset.i][inp.dataset.k] = inp.value; refresh(); }));
+      el.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { list.splice(Number(b.dataset.rm), 1); draw(); }));
+      el.querySelector('#segAdd').addEventListener('click', () => {
+        const prev = list[list.length - 1];
+        if (prev && !prev.e) prev.e = nowHM();
+        list.push({ s: prev ? prev.e : (isToday ? nowHM() : '09:00'), e: '' });
+        draw();
+      });
+      el.querySelector('#segSave').addEventListener('click', () => {
+        if (check()) return;
+        if (!list.length) { if (had) setDay(d, { seg: [], h: 0 }); App.closeSheet(); updateDisplay(); return; }
+        const seg = list.map(g => g.e ? { s: g.s, e: g.e } : { s: g.s });
+        const open = !seg[seg.length - 1].e;
+        setDay(d, { seg, done: isToday ? (!open && state(d).state === 'done') : true, h: Math.round(minutes() / 60 * 100) / 100 });
+        syncLive(); App.closeSheet(); updateDisplay();
+        App.toast(`Horaires enregistrés · ${fmtDur(minutes())} travaillées`);
+      });
+      refresh();
+    };
+    draw();
   }
 
   function openHistory() {

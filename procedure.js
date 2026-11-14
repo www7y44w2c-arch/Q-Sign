@@ -44,25 +44,40 @@
   const filterBar = () => `<div class="legend"><button class="filter-chip ${onlySpec ? 'on' : ''}" id="onlySpec" aria-pressed="${onlySpec}">${onlySpec ? '✓ ' : ''}Avec spécimen</button><span>en violet = spécimen dispo</span></div>`;
   const bindCountries = (el, from) => el.querySelectorAll('[data-country]').forEach(b => b.addEventListener('click', () => renderCountry(b.dataset.country, from)));
 
+  // Visionneuse : la vignette 800 px s'affiche tout de suite, la version 1280 px la remplace si elle charge.
+  function bindViewer(root) {
+    root.querySelectorAll('.spec-img').forEach(b => b.addEventListener('click', () => {
+      App.view(b.dataset.src, b.dataset.cap, b.dataset.source);
+      const full = b.dataset.srcFull;
+      if (full && full !== b.dataset.src) { const im = new Image(); im.onload = () => { const v = document.querySelector('#viewerImg img'); if (v && v.src === b.dataset.src) v.src = full; }; im.src = full; }
+    }));
+  }
+  // Pays consultés récemment (sur ce téléphone).
+  const RECENT = 'bv.recent';
+  const recents = () => S.readLocal(RECENT, []).filter(code => allCountries.some(c => c.code === code));
+  const pushRecent = code => S.writeLocal(RECENT, [code, ...recents().filter(x => x !== code)].slice(0, 6));
+
   // Écran 1 : recherche + zones (tient sur un écran)
   function renderHome(focus) {
     freeUrls();
     App.header({ title: 'Procédure' });
     body.innerHTML = `<div class="pad stack fill">
       <label class="search"><span>⌕</span><input id="procSearch" type="search" placeholder="Rechercher un pays ou un code…" autocomplete="off" /></label>
+      ${recents().length ? `<div class="recents" id="procRecents"><span class="label">RÉCENTS</span><div class="recent-row">${recents().map(code => { const c = allCountries.find(x => x.code === code); return `<button class="recent" data-country="${code}" title="${esc(c.name)}"><span class="mono">${code}</span><small>${esc(c.name)}</small></button>`; }).join('')}</div></div>` : ''}
       <div class="zones" id="procZones">${order.map(k => `<button class="zone" data-zone="${k}"><span class="mono accent">${zones[k].icon}</span><strong>${zones[k].label}</strong><small>${zones[k].list.length} pays · <em>${zones[k].list.filter(c => hasAny(c.code)).length} avec spécimens</em></small></button>`).join('')}</div>
       <div class="list scroll" id="procResults" hidden></div>
     </div>`;
     const input = body.querySelector('#procSearch'), res = body.querySelector('#procResults'), zl = body.querySelector('#procZones');
     input.addEventListener('input', () => {
       const q = norm(input.value.trim());
-      zl.hidden = !!q; res.hidden = !q;
+      zl.hidden = !!q; res.hidden = !q; const rc = body.querySelector('#procRecents'); if (rc) rc.hidden = !!q;
       if (!q) return;
       const rows = allCountries.filter(c => norm(`${c.name} ${c.code}`).includes(q) && (!onlySpec || hasAny(c.code))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       res.innerHTML = rows.length ? rows.map(countryRow).join('') : '<p class="empty">Aucun pays ne correspond.</p>';
       bindCountries(res, null);
     });
     body.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => renderZone(b.dataset.zone)));
+    const rc = body.querySelector('#procRecents'); if (rc) bindCountries(rc, null);
     if (focus) setTimeout(() => input.focus(), 50);
   }
 
@@ -102,7 +117,7 @@
       <div class="seg" role="tablist">${docs.map(x => `<button role="tab" class="${x === d ? 'on' : ''}" aria-selected="${x === d}" data-doc="${x.type}">${short[x.type]}${x.type !== 'none' && has(c.code, x.type) ? ' <span class="dot"></span>' : ''}</button>`).join('')}</div>
       <div class="scroll specs">
         <p class="muted small">${esc(d.detail)}</p>
-        ${commons.map(img => `<figure class="spec"><a href="${img.page}" target="_blank" rel="noopener"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} — ${esc(c.name)}" loading="lazy" /></a><figcaption><b>${esc(img.label || '')}</b> · Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('')}
+        ${commons.map(img => `<figure class="spec"><button class="spec-img" data-src="${img.thumb}" data-src-full="${img.thumb.replace(/\/(\d+)px-/, '/1280px-')}" data-cap="${esc(`${c.name} · ${d.name} · ${img.label || ''} — ${img.license}${img.artist ? ', ' + img.artist : ''}`)}" data-source="${img.page}" aria-label="Agrandir : ${esc(img.label || d.name)}"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} — ${esc(c.name)}" loading="lazy" /></button><figcaption><b>${esc(img.label || '')}</b> · Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('')}
         <div id="ownSpecs"></div>
         ${d.type === 'none' || commons.length ? '' : '<p class="empty" id="noSpec">Pas de spécimen libre pour ce document. Ouvre PRADO ou ajoute ton image.</p>'}
       </div>
@@ -112,6 +127,8 @@
       </div>
     </div>`;
     body.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => renderCountry(code, from, b.dataset.doc)));
+    bindViewer(body.querySelector('.specs'));
+    pushRecent(code);
     const key = `${c.code}:${d.type}`;
     const mine = async () => (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).sort((a, b) => a.added - b.added);
     const drawOwn = async () => {
@@ -121,8 +138,9 @@
       const empty = body.querySelector('#noSpec'); if (empty) empty.hidden = recs.length > 0;
       box.innerHTML = recs.map(r => {
         const u = URL.createObjectURL(r.blob); urls.push(u);
-        return `<figure class="spec"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></a><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="link" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`;
+        return `<figure class="spec"><button class="spec-img" data-src="${u}" data-cap="${esc(`${c.name} · ${r.label || 'Mon spécimen'} (sur ce téléphone)`)}" aria-label="Agrandir : ${esc(r.label || 'Mon spécimen')}"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></button><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="link" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`;
       }).join('');
+      bindViewer(box);
       box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); await refreshOwn(); drawOwn(); } }));
     };
     const add = body.querySelector('#ownAdd');
