@@ -24,7 +24,7 @@
   <div class="app">
     <header class="bar">
       <button class="bar-btn" id="barBack" aria-label="Retour" hidden>‹</button>
-      <span class="bar-logo" id="barLogo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.8 20 6v5.5c0 5-3.4 8.2-8 9.7-4.6-1.5-8-4.7-8-9.7V6l8-3.2Z"/><path d="m8.4 12.1 2.3 2.3 4.9-5"/></svg></span>
+      <span class="bar-logo" id="barLogo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 21 19H3Z"/><path d="M7.6 14.2q4.4-4 8.8 0-4.4 4-8.8 0Z"/><circle cx="12" cy="14.2" r="1.3" fill="currentColor" stroke="none"/></svg></span>
       <h1 class="bar-title" id="barTitle">S'kam</h1>
       <button class="bar-btn bar-action" id="barAction" hidden></button>
     </header>
@@ -32,21 +32,34 @@
     <main class="screens">
       <!-- ACCUEIL -->
       <section class="screen" data-screen="home">
-        <div class="pad stack">
-          <div class="hello"><span class="mono muted" id="homeDate"></span><h2>Bonjour<span class="accent">.</span></h2></div>
-          <button class="today" id="homeToday" aria-label="Ouvrir le calcul du jour">
-            <span class="today-top"><span class="label">AUJOURD'HUI</span><span class="mono muted" id="homeRate"></span></span>
-            <span class="today-num"><strong class="mono" id="homeCount">0</strong><span class="muted mono" id="homeTarget">/ 0</span></span>
+        <div class="pad stack dash">
+          <div class="hello row"><div><span class="mono muted" id="homeDate"></span><h2>Bonjour<span class="accent">.</span></h2></div><span class="clock mono" id="homeClock"></span></div>
+
+          <div class="card dcard" id="homeToday" role="button" tabindex="0" aria-label="Ouvrir la calculette">
+            <div class="row"><span class="label">AUJOURD'HUI</span><span class="small muted" id="homeStatus"></span></div>
+            <div class="row"><div class="hero"><strong class="mono" id="homeCount">0</strong><span class="muted">dossiers</span></div><button class="btn btn-primary plus" id="homePlus" aria-label="Ajouter un dossier">+1</button></div>
+            <div class="kpis"><div><small>Heures</small><strong class="mono" id="homeHours">—</strong></div><div><small>Cadence/h</small><strong class="mono" id="homePace">—</strong></div><div><small>Objectif</small><strong class="mono" id="homePct">—</strong></div></div>
             <span class="meter"><span id="homeBar"></span></span>
-          </button>
-          <div class="today-actions"><button class="btn" id="homeMinus">−1</button><button class="btn btn-primary" id="homePlus">+1 dossier</button><button class="btn" id="homePlus10">+10</button></div>
-          <div class="tiles">
-            <button class="tile" data-open="reference"><span class="tile-ic">✎</span><strong>Cas complexes</strong><small>Tes cas anonymisés</small></button>
-            <button class="tile" data-open="training"><span class="tile-ic">◎</span><strong>Formation</strong><small>Cas fictifs</small></button>
-            <button class="tile" data-open="sources"><span class="tile-ic">⌘</span><strong>Sources</strong><small>PRADO, OACI…</small></button>
-            <button class="tile" data-open="search"><span class="tile-ic">⌕</span><strong>Chercher un pays</strong><small>Spécimens</small></button>
           </div>
-          <p class="foot">Outil personnel. Ne remplace pas les procédures de ton établissement.</p>
+
+          <div class="card dcard" id="homeMonth" role="button" tabindex="0" aria-label="Ouvrir la vue du mois">
+            <div class="row"><span class="label" id="homeMonthLabel">MOIS</span><span class="small muted" id="homeNext"></span></div>
+            <div class="hero"><strong class="mono" id="homeMonthTotal">0</strong><span class="muted" id="homeMonthOf"></span></div>
+            <div class="tiermeter" id="homeTiers"><span class="tm-fill" id="homeTierFill"></span></div>
+            <div class="kpis"><div><small>Projection</small><strong class="mono" id="homeProj">—</strong></div><div><small>Moy./jour</small><strong class="mono" id="homeAvg">—</strong></div><div><small>Jours</small><strong class="mono" id="homeDays">—</strong></div></div>
+          </div>
+
+          <div class="card dcard week">
+            <div class="row"><span class="label">7 DERNIERS JOURS</span><span class="small muted" id="homeWeekTotal"></span></div>
+            <div class="wk-bars" id="homeWeek" role="list" aria-label="Dossiers par jour sur 7 jours"></div>
+            <div class="small muted wk-detail" id="homeWeekDetail" aria-live="polite">Touche une barre · <span class="dash-key"></span> objectif du jour</div>
+          </div>
+
+          <div class="shortcuts">
+            <button class="btn" data-open="reference">✎ Cas</button>
+            <button class="btn" data-open="training">◎ Formation</button>
+            <button class="btn" data-open="sources">⌘ Sources</button>
+          </div>
         </div>
       </section>
 

@@ -33,7 +33,15 @@
   const urls = [];
   const freeUrls = () => urls.splice(0).forEach(u => URL.revokeObjectURL(u));
   const norm = s => s.toLocaleLowerCase('fr').normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const countryRow = c => `<button class="item" data-country="${c.code}"><span class="item-ic mono">${c.code}</span><span class="item-txt"><strong>${esc(c.name)}</strong><small>${[tags(c), SPEC[c.code] ? 'spécimens' : ''].filter(Boolean).join(' · ') || 'Hors UE'}</small></span><span class="item-go">›</span></button>`;
+  // Pastilles : PASS / ID allumées quand un spécimen existe (Commons ou image ajoutée sur le téléphone).
+  let own = new Set();
+  const refreshOwn = async () => { try { own = new Set((await S.all('specimens')).map(r => r.id.split(':').slice(0, 2).join(':'))); } catch { own = new Set(); } };
+  const has = (code, type) => !!(SPEC[code] && SPEC[code][type] && SPEC[code][type].length) || own.has(`${code}:${type}`);
+  const hasAny = code => has(code, 'passport') || has(code, 'id') || has(code, 'residence');
+  const pills = c => `<span class="pills" aria-label="${has(c.code, 'passport') ? 'spécimen passeport' : 'pas de spécimen passeport'}, ${has(c.code, 'id') ? 'spécimen carte d’identité' : 'pas de spécimen carte d’identité'}"><span class="pill ${has(c.code, 'passport') ? 'on' : ''}">PASS</span><span class="pill ${has(c.code, 'id') ? 'on' : ''}">ID</span></span>`;
+  const countryRow = c => `<button class="item" data-country="${c.code}"><span class="item-ic mono">${c.code}</span><span class="item-txt"><strong>${esc(c.name)}</strong><small>${tags(c) || 'Hors UE'}</small></span>${pills(c)}<span class="item-go">›</span></button>`;
+  let onlySpec = false;
+  const filterBar = () => `<div class="legend"><button class="filter-chip ${onlySpec ? 'on' : ''}" id="onlySpec" aria-pressed="${onlySpec}">${onlySpec ? '✓ ' : ''}Avec spécimen</button><span>en violet = spécimen dispo</span></div>`;
   const bindCountries = (el, from) => el.querySelectorAll('[data-country]').forEach(b => b.addEventListener('click', () => renderCountry(b.dataset.country, from)));
 
   // Écran 1 : recherche + zones (tient sur un écran)
@@ -42,7 +50,7 @@
     App.header({ title: 'Procédure' });
     body.innerHTML = `<div class="pad stack fill">
       <label class="search"><span>⌕</span><input id="procSearch" type="search" placeholder="Rechercher un pays ou un code…" autocomplete="off" /></label>
-      <div class="zones" id="procZones">${order.map(k => `<button class="zone" data-zone="${k}"><span class="mono accent">${zones[k].icon}</span><strong>${zones[k].label}</strong><small>${zones[k].list.length} pays</small></button>`).join('')}</div>
+      <div class="zones" id="procZones">${order.map(k => `<button class="zone" data-zone="${k}"><span class="mono accent">${zones[k].icon}</span><strong>${zones[k].label}</strong><small>${zones[k].list.length} pays · <em>${zones[k].list.filter(c => hasAny(c.code)).length} avec spécimens</em></small></button>`).join('')}</div>
       <div class="list scroll" id="procResults" hidden></div>
     </div>`;
     const input = body.querySelector('#procSearch'), res = body.querySelector('#procResults'), zl = body.querySelector('#procZones');
@@ -50,7 +58,7 @@
       const q = norm(input.value.trim());
       zl.hidden = !!q; res.hidden = !q;
       if (!q) return;
-      const rows = allCountries.filter(c => norm(`${c.name} ${c.code}`).includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      const rows = allCountries.filter(c => norm(`${c.name} ${c.code}`).includes(q) && (!onlySpec || hasAny(c.code))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       res.innerHTML = rows.length ? rows.map(countryRow).join('') : '<p class="empty">Aucun pays ne correspond.</p>';
       bindCountries(res, null);
     });
@@ -65,17 +73,19 @@
     App.header({ title: z.label, back: () => renderHome() });
     body.innerHTML = `<div class="pad stack fill">
       <label class="search"><span>⌕</span><input id="zoneSearch" type="search" placeholder="Filtrer ${z.list.length} pays…" autocomplete="off" /></label>
+      ${filterBar()}
       <div class="list scroll" id="zoneList"></div>
       ${key === 'schengen' ? '<p class="foot">29 États Schengen à la date de cette version : composition à revérifier.</p>' : ''}
     </div>`;
     const input = body.querySelector('#zoneSearch'), list = body.querySelector('#zoneList');
     const draw = () => {
       const q = norm(input.value.trim());
-      const rows = z.list.filter(c => norm(`${c.name} ${c.code}`).includes(q));
+      const rows = z.list.filter(c => norm(`${c.name} ${c.code}`).includes(q) && (!onlySpec || hasAny(c.code)));
       list.innerHTML = rows.length ? rows.map(countryRow).join('') : '<p class="empty">Aucun pays ne correspond.</p>';
       bindCountries(list, key);
     };
     input.addEventListener('input', draw); draw();
+    body.querySelector('#onlySpec').addEventListener('click', ev => { onlySpec = !onlySpec; ev.currentTarget.classList.toggle('on', onlySpec); ev.currentTarget.setAttribute('aria-pressed', onlySpec); ev.currentTarget.textContent = (onlySpec ? '✓ ' : '') + 'Avec spécimen'; draw(); });
   }
 
   // Écran 3 : fiche pays, un onglet par document. Seule la zone des pièces défile.
@@ -89,7 +99,7 @@
     const commons = (SPEC[c.code] && SPEC[c.code][d.type]) || [];
     body.innerHTML = `<div class="pad stack fill">
       <div class="row"><span class="chip mono">${c.code}</span><span class="muted small">${tags(c) || 'Hors UE'}</span></div>
-      <div class="seg" role="tablist">${docs.map(x => `<button role="tab" class="${x === d ? 'on' : ''}" aria-selected="${x === d}" data-doc="${x.type}">${short[x.type]}</button>`).join('')}</div>
+      <div class="seg" role="tablist">${docs.map(x => `<button role="tab" class="${x === d ? 'on' : ''}" aria-selected="${x === d}" data-doc="${x.type}">${short[x.type]}${x.type !== 'none' && has(c.code, x.type) ? ' <span class="dot"></span>' : ''}</button>`).join('')}</div>
       <div class="scroll specs">
         <p class="muted small">${esc(d.detail)}</p>
         ${commons.map(img => `<figure class="spec"><a href="${img.page}" target="_blank" rel="noopener"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} — ${esc(c.name)}" loading="lazy" /></a><figcaption><b>${esc(img.label || '')}</b> · Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('')}
@@ -113,7 +123,7 @@
         const u = URL.createObjectURL(r.blob); urls.push(u);
         return `<figure class="spec"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></a><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="link" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`;
       }).join('');
-      box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); drawOwn(); } }));
+      box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); await refreshOwn(); drawOwn(); } }));
     };
     const add = body.querySelector('#ownAdd');
     if (add) add.addEventListener('change', async () => {
@@ -124,10 +134,10 @@
         const label = (prompt(`Nom de l'image (${f.name}) :`, suggestions.shift() || d.name) || '').trim() || d.name;
         await S.put('specimens', { id: `${key}:${S.uid()}`, label, blob: await S.compressImage(f), name: f.name, added: Date.now() });
       }
-      drawOwn();
+      await refreshOwn(); drawOwn();
     });
     drawOwn();
   }
 
-  App.on('procedure', opts => renderHome(opts.search));
+  App.on('procedure', async opts => { await refreshOwn(); renderHome(opts.search); });
 })();
