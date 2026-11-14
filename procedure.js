@@ -18,14 +18,14 @@
   function documentsFor(c) {
     const europe = UE.includes(c.code) || SCHENGEN.includes(c.code);
     if (!europe) return [
-      { name: 'Passeport', detail: 'Document de voyage' },
-      { name: "Carte d'identité et autres titres", detail: 'Selon les documents délivrés par le pays et répertoriés dans PRADO' }
+      { type: 'passport', name: 'Passeport', detail: 'Document de voyage' },
+      { type: 'id', name: "Carte d'identité et autres titres", detail: 'Selon les documents délivrés par le pays et répertoriés dans PRADO' }
     ];
-    const docs = [{ name: 'Passeport', detail: 'Document de voyage' }];
-    if (c.code === 'DNK') docs.push({ name: "Pas de carte nationale d'identité", detail: "Le Danemark ne délivre pas de carte d'identité nationale : vérifier les autres titres dans PRADO" });
-    else if (c.code === 'IRL') docs.push({ name: 'Carte passeport', detail: "Passport card, utilisée comme document d'identité" });
-    else docs.push({ name: "Carte d'identité", detail: 'Document national' });
-    docs.push({ name: 'Titre de séjour', detail: 'Modèle uniforme européen délivré aux ressortissants de pays tiers' });
+    const docs = [{ type: 'passport', name: 'Passeport', detail: 'Document de voyage' }];
+    if (c.code === 'DNK') docs.push({ type: 'none', name: "Pas de carte nationale d'identité", detail: "Le Danemark ne délivre pas de carte d'identité nationale : vérifier les autres titres dans PRADO" });
+    else if (c.code === 'IRL') docs.push({ type: 'id', name: 'Carte passeport', detail: "Passport card, utilisée comme document d'identité" });
+    else docs.push({ type: 'id', name: "Carte d'identité", detail: 'Document national' });
+    docs.push({ type: 'residence', name: 'Titre de séjour', detail: 'Modèle uniforme européen délivré aux ressortissants de pays tiers' });
     return docs;
   }
 
@@ -49,7 +49,7 @@
     const draw = () => {
       const q = document.getElementById('procSearch').value.trim().toLocaleLowerCase('fr');
       const rows = z.list.filter(c => `${c.name} ${c.code}`.toLocaleLowerCase('fr').includes(q));
-      document.getElementById('procList').innerHTML = rows.map(c => `<button class="doc-card" data-country="${c.code}"><span class="flag">${c.code}</span><span class="doc-info"><strong>${esc(c.name)}</strong><small>${documentsFor(c).length} documents de référence${tags(c)}</small></span><span class="doc-arrow">↗</span></button>`).join('');
+      document.getElementById('procList').innerHTML = rows.map(c => `<button class="doc-card" data-country="${c.code}"><span class="flag">${c.code}</span><span class="doc-info"><strong>${esc(c.name)}</strong><small>${documentsFor(c).length} documents de référence${tags(c)}${SPEC[c.code] ? ' · spécimens' : ''}</small></span><span class="doc-arrow">↗</span></button>`).join('');
       document.getElementById('procEmpty').hidden = rows.length > 0;
       body.querySelectorAll('[data-country]').forEach(b => b.addEventListener('click', () => renderCountry(key, b.dataset.country)));
     };
@@ -59,13 +59,50 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  const SPEC = window.SPECIMENS || {};
+  const S = window.BVStore;
+  const pageUrls = [];
+
+  function docCard(c, d) {
+    const commons = (SPEC[c.code] && SPEC[c.code][d.type]) || [];
+    const gallery = commons.map(img => `<figure class="spec-fig"><a href="${img.page}" target="_blank" rel="noopener"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} ${esc(c.name)}" loading="lazy" /></a>
+      <figcaption>${esc(img.label || '')}${img.label ? ' · ' : ''}Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('');
+    const canUpload = d.type !== 'none';
+    return `<div class="spec-card" data-doc="${d.type}">
+      <div class="spec-head"><span class="source-icon">${c.code}</span><span><strong>${esc(d.name)}</strong><small>${esc(d.detail)}</small></span></div>
+      ${gallery ? `<div class="spec-gallery">${gallery}</div>` : (d.type === 'passport' || d.type === 'id') ? '<p class="spec-empty">Pas de spécimen à licence libre trouvé pour ce document. Consulte PRADO ou ajoute ton image.</p>' : ''}
+      <div class="spec-own" data-own="${c.code}:${d.type}"></div>
+      <div class="calc-actions">
+        <a class="secondary-btn spec-link" href="${PRADO}" target="_blank" rel="noopener">PRADO (pays : ${c.code}) ↗</a>
+        ${canUpload ? `<label class="secondary-btn">+ Mon spécimen<input type="file" accept="image/*" data-upload="${c.code}:${d.type}" hidden /></label>` : ''}
+      </div></div>`;
+  }
+
+  async function drawOwn(key) {
+    const box = body.querySelector(`[data-own="${key}"]`); if (!box || !S) return;
+    let rec; try { rec = await S.get('specimens', key); } catch { return; }
+    if (!rec) { box.innerHTML = ''; return; }
+    const u = URL.createObjectURL(rec.blob); pageUrls.push(u);
+    box.innerHTML = `<figure class="spec-fig"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="Mon spécimen" /></a><figcaption>Mon spécimen · enregistré sur ce téléphone · <button type="button" class="spec-del" data-del="${key}">Supprimer</button></figcaption></figure>`;
+    box.querySelector('[data-del]').addEventListener('click', async () => { if (confirm('Supprimer ton image de spécimen ?')) { await S.del('specimens', key); drawOwn(key); } });
+  }
+
   function renderCountry(zoneKey, code) {
+    pageUrls.splice(0).forEach(u => URL.revokeObjectURL(u));
     const c = allCountries.find(x => x.code === code);
+    const docs = documentsFor(c);
     body.innerHTML = `<button class="secondary-btn proc-back" data-back>← ${zones[zoneKey].label}</button>
       <div class="section-head"><div><div class="eyebrow">DOSSIER PAYS · CODE ${c.code}</div><h2>${esc(c.name)}</h2></div><span class="tiny-tag">${tags(c).replace(/^ · /, '') || 'HORS UE'}</span></div>
-      <div class="source-list">${documentsFor(c).map(d => `<a class="source-card" href="${PRADO}" target="_blank" rel="noopener"><span class="source-icon">${c.code}</span><span><strong>${esc(d.name)}</strong><small>${esc(d.detail)}</small><em>Voir les spécimens sur PRADO (pays : ${c.code}) ↗</em></span></a>`).join('')}</div>
-      <div class="notice"><strong>Où trouver les spécimens</strong><p>Les spécimens officiels sont consultables dans PRADO, le registre public du Conseil de l'UE. Sur la page PRADO, choisis le pays <b>${c.code}</b> pour afficher tous ses documents. Vérifie toujours la version et la date de validité.</p></div>`;
+      <div class="source-list">${docs.map(d => docCard(c, d)).join('')}</div>
+      <div class="notice"><strong>Spécimens</strong><p>Les images publiques viennent de Wikimedia Commons (licence libre, auteur indiqué ; touche une image pour voir sa source). Pour la référence officielle et toutes les versions, consulte PRADO et choisis le pays <b>${c.code}</b>. Ajoute uniquement des spécimens, jamais la pièce d'un client.</p></div>`;
     body.querySelector('[data-back]').addEventListener('click', () => renderZone(zoneKey));
+    docs.forEach(d => drawOwn(`${c.code}:${d.type}`));
+    body.querySelectorAll('[data-upload]').forEach(inp => inp.addEventListener('change', async () => {
+      const f = inp.files[0]; if (!f || !S) return;
+      const blob = await S.compressImage(f);
+      await S.put('specimens', { id: inp.dataset.upload, blob, name: f.name, added: Date.now() });
+      inp.value = ''; drawOwn(inp.dataset.upload);
+    }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
