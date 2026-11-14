@@ -26,7 +26,7 @@
       const q = norm(input.value.trim());
       const rows = cases.filter(c => norm([c.title, c.country, c.type, c.status, c.description, c.issue, c.decision, c.notes].join(' ')).includes(q));
       const list = body.querySelector('#refList');
-      list.innerHTML = rows.length ? rows.map(c => `<button class="item" data-case="${c.id}"><span class="item-ic mono">${esc((c.country || '—').slice(0, 3).toUpperCase())}</span><span class="item-txt"><strong>${esc(c.title || 'Sans titre')}</strong><small>${esc(c.type)} · ${esc(c.status)} · ${(c.files || []).length} pièce${(c.files || []).length > 1 ? 's' : ''}</small></span><span class="item-go">›</span></button>`).join('')
+      list.innerHTML = rows.length ? rows.map(c => `<button class="item" data-case="${esc(c.id)}"><span class="item-ic mono">${esc((c.country || '—').slice(0, 3).toUpperCase())}</span><span class="item-txt"><strong>${esc(c.title || 'Sans titre')}</strong><small>${esc(c.type)} · ${esc(c.status)} · ${(c.files || []).length} pièce${(c.files || []).length > 1 ? 's' : ''}</small></span><span class="item-go">›</span></button>`).join('')
         : `<p class="empty">${cases.length ? 'Aucun cas ne correspond.' : 'Aucun cas enregistré. Touche « + » pour ajouter ton premier cas complexe.'}</p>`;
       list.querySelectorAll('[data-case]').forEach(b => b.addEventListener('click', () => renderCase(b.dataset.case)));
     };
@@ -82,10 +82,10 @@
         <div class="field"><span>Pièces jointes (images ou PDF)</span><div class="chips" id="refFiles"></div>
           <label class="btn">+ Ajouter des fichiers<input id="refAdd" type="file" accept="image/*,application/pdf" multiple hidden /></label></div>
         <button class="btn btn-primary" type="submit">Enregistrer</button>
-      </form>`);
+      </form>`, () => cleanup());
     const drawFiles = async () => {
       const files = (await Promise.all(fileIds.map(id => S.get('files', id)))).filter(Boolean);
-      el.querySelector('#refFiles').innerHTML = files.map(f => `<span class="chip">${esc(f.name)} <button type="button" class="link" data-rm="${f.id}" aria-label="Retirer ${esc(f.name)}">✕</button></span>`).join('');
+      el.querySelector('#refFiles').innerHTML = files.map(f => `<span class="chip">${esc(f.name)} <button type="button" class="link" data-rm="${esc(f.id)}" aria-label="Retirer ${esc(f.name)}">✕</button></span>`).join('');
       el.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { fileIds = fileIds.filter(x => x !== b.dataset.rm); drawFiles(); }));
     };
     el.querySelector('#refAdd').addEventListener('change', async ev => {
@@ -98,8 +98,7 @@
     });
     // Si on ferme sans enregistrer, on retire les fichiers ajoutés entre-temps.
     let saved = false;
-    const cleanup = () => { if (!saved) added.forEach(id => S.del('files', id)); };
-    document.querySelectorAll('#sheet [data-close]').forEach(x => x.addEventListener('click', cleanup, { once: true }));
+    function cleanup() { if (!saved) added.forEach(id => S.del('files', id)); }
     el.querySelector('#refForm').addEventListener('submit', async ev => {
       ev.preventDefault();
       const fd = new FormData(ev.target);
