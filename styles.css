@@ -311,3 +311,17 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .zone em{font-style:normal;font-size:11px;color:var(--accent)}
 .seg .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);vertical-align:middle;margin-left:3px}
 .bar-logo{color:var(--accent)}
+
+/* ---------- Chrono de shift ---------- */
+.key .ki{display:block;font-size:18px;line-height:1}
+.key .kl{display:block;font:700 10px var(--sans);letter-spacing:.3px;margin-top:2px}
+.k-chrono{background:#10261b;border-color:#1f4d33;color:var(--good)}
+.k-chrono.on{background:#2a2110;border-color:#5a4415;color:var(--warn)}
+.k-stop{background:#2a1517;border-color:#5a2a2f;color:var(--danger)}
+.k-empty{visibility:hidden}
+.dot-live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--good);margin-right:6px;vertical-align:middle;box-shadow:0 0 8px var(--good);animation:blinkdot 1.4s ease-in-out infinite}
+@keyframes blinkdot{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.dot-live{animation:none}}
+.home-btns{display:flex;gap:8px}
+.chrono-btn{min-width:48px;font-size:18px;color:var(--good);border-color:#1f4d33;background:#10261b}
+.chrono-btn.on{color:var(--warn);border-color:#5a4415;background:#2a2110}

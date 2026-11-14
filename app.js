@@ -63,7 +63,12 @@ window.App = (() => {
     $('#homePace').textContent = t.h ? t.pace : '—';
     $('#homePct').textContent = t.target ? `${Math.round(t.n / t.target * 100)} %` : '—';
     $('#homeBar').style.width = `${t.target ? Math.min(100, t.n / t.target * 100) : 0}%`;
-    $('#homeStatus').textContent = C.running() ? `⏱ depuis ${C.start()}` : t.n ? 'journée terminée' : 'pas commencé';
+    const st = C.state();
+    $('#homeStatus').textContent = { running: `● en cours depuis ${st.since}`, paused: `⏸ en pause depuis ${st.since}`, done: `■ shift terminé à ${st.since}`, idle: 'chrono à l’arrêt' }[st.state];
+    const cb = $('#homeChrono');
+    cb.innerHTML = st.state === 'running' ? '⏸' : '▶';
+    cb.setAttribute('aria-label', st.state === 'running' ? 'Mettre en pause' : st.state === 'idle' ? 'Démarrer le shift' : 'Reprendre');
+    cb.classList.toggle('on', st.state === 'running');
 
     // Mois : total, prochain palier, projection
     const m = C.month(), tiers = C.tiers(), max = Math.max(...tiers, m.total, 1);
@@ -98,6 +103,7 @@ window.App = (() => {
   }
 
   $('#homePlus').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.add(1); render(); });
+  $('#homeChrono').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.toggle(); render(); });
   const open = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
   open($('#homeToday'), () => App.go('calcul'));
   open($('#homeMonth'), () => App.go('calcul', { view: 'month' }));

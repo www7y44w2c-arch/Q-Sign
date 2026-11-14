@@ -8,7 +8,7 @@ Application web mobile (PWA) d'aide à la vérification documentaire : HTML, CSS
 Interface pensée comme une application : chaque écran tient sur la hauteur du téléphone, avec un bouton retour dans l'en-tête ; seules les listes et les fiches de spécimens défilent.
 - **Procédure** : zones (Schengen, Europe, Afrique, Amériques, Asie & Moyen-Orient, Océanie), puis pays. Pastilles PASS / ID sur chaque pays quand un spécimen est disponible, filtre « Avec spécimen ». Par pays : passeport (2e et 3e de couverture), CNI / eCNI, titre de séjour pour la France. Spécimens à licence libre de Wikimedia Commons (auteur et licence affichés), lien direct vers PRADO, ajout de ses propres images.
 - **Contrôles** : méthode de contrôle en 5 étapes.
-- **Calcul** : calculette (pavé numérique : `=` fixe le total, `+` / `−` ajoutent ou retirent, `h` fixe les heures, les heures se calculent en temps réel à partir du premier dossier du jour (heure du téléphone), `⏱` corrige l'heure de début, `⏹` termine la journée), choix du jour, objectif à 80 dossiers/heure ; vue Mois avec projection et paliers (9 000 / 12 000 / 14 000), tous réglables.
+- **Calcul** : calculette (pavé numérique : `=` fixe le total, `+` / `−` ajoutent ou retirent, `h` fixe les heures, chrono de shift `▶ Start` / `⏸ Pause` / `▶ Reprendre` / `■ Fin` (heure du téléphone, pauses déduites des heures et de la cadence ; taper `830` avant `▶` pour démarrer ou corriger à 8 h 30)), choix du jour, objectif à 80 dossiers/heure ; vue Mois avec projection et paliers (9 000 / 12 000 / 14 000), tous réglables.
 - Depuis l'accueil : **Cas complexes** (fiches anonymisées avec pièces jointes), **Entraînement** (cas fictifs), **Sources officielles**.
 
 ## Données
