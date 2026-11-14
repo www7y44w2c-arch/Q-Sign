@@ -26,90 +26,108 @@
     return docs;
   }
 
-  const esc = s => s.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  const body = document.getElementById('procBody');
-  const tags = c => (SCHENGEN.includes(c.code) ? ' · Schengen' : '') + (UE.includes(c.code) ? ' · UE' : '');
-
-  function renderZones() {
-    body.innerHTML = `<div class="quick-grid">${order.map(k => { const z = zones[k]; return `<button class="quick-card" data-zone="${k}"><span class="quick-icon ${z.cls}">${z.icon}</span><strong>${z.label}</strong><small>${z.list.length} pays</small><span class="card-arrow">↗</span></button>`; }).join('')}</div>`;
-    body.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => renderZone(b.dataset.zone)));
-  }
-
-  function renderZone(key) {
-    const z = zones[key];
-    body.innerHTML = `<button class="secondary-btn proc-back" data-back>← Toutes les zones</button>
-      <div class="section-head"><div><div class="eyebrow">ZONE</div><h2>${z.label}</h2></div><span class="tiny-tag">${z.list.length} PAYS</span></div>
-      <label class="searchbox"><span>⌕</span><input id="procSearch" type="search" placeholder="Pays ou code…" autocomplete="off" /></label>
-      <div class="document-list proc-list" id="procList"></div>
-      <div class="empty-state" id="procEmpty" hidden>Aucun pays ne correspond.</div>
-      ${key === 'schengen' ? '<div class="notice"><strong>Composition à vérifier</strong><p>Liste des 29 États Schengen connue à la date de cette version. Vérifie toujours la composition à jour sur le site de la Commission européenne.</p></div>' : ''}`;
-    const draw = () => {
-      const q = document.getElementById('procSearch').value.trim().toLocaleLowerCase('fr');
-      const rows = z.list.filter(c => `${c.name} ${c.code}`.toLocaleLowerCase('fr').includes(q));
-      document.getElementById('procList').innerHTML = rows.map(c => `<button class="doc-card" data-country="${c.code}"><span class="flag">${c.code}</span><span class="doc-info"><strong>${esc(c.name)}</strong><small>${documentsFor(c).length} documents de référence${tags(c)}${SPEC[c.code] ? ' · spécimens' : ''}</small></span><span class="doc-arrow">↗</span></button>`).join('');
-      document.getElementById('procEmpty').hidden = rows.length > 0;
-      body.querySelectorAll('[data-country]').forEach(b => b.addEventListener('click', () => renderCountry(key, b.dataset.country)));
-    };
-    document.getElementById('procSearch').addEventListener('input', draw);
-    body.querySelector('[data-back]').addEventListener('click', renderZones);
-    draw();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
+  const S = window.BVStore, esc = S.esc;
   const SPEC = window.SPECIMENS || {};
-  const S = window.BVStore;
-  const pageUrls = [];
+  const body = document.getElementById('procBody');
+  const tags = c => [SCHENGEN.includes(c.code) && 'Schengen', UE.includes(c.code) && 'UE'].filter(Boolean).join(' · ');
+  const urls = [];
+  const freeUrls = () => urls.splice(0).forEach(u => URL.revokeObjectURL(u));
+  const norm = s => s.toLocaleLowerCase('fr').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const countryRow = c => `<button class="item" data-country="${c.code}"><span class="item-ic mono">${c.code}</span><span class="item-txt"><strong>${esc(c.name)}</strong><small>${[tags(c), SPEC[c.code] ? 'spécimens' : ''].filter(Boolean).join(' · ') || 'Hors UE'}</small></span><span class="item-go">›</span></button>`;
+  const bindCountries = (el, from) => el.querySelectorAll('[data-country]').forEach(b => b.addEventListener('click', () => renderCountry(b.dataset.country, from)));
 
-  function docCard(c, d) {
-    const commons = (SPEC[c.code] && SPEC[c.code][d.type]) || [];
-    const gallery = commons.map(img => `<figure class="spec-fig"><a href="${img.page}" target="_blank" rel="noopener"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} ${esc(c.name)}" loading="lazy" /></a>
-      <figcaption>${esc(img.label || '')}${img.label ? ' · ' : ''}Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('');
-    const canUpload = d.type !== 'none';
-    return `<div class="spec-card" data-doc="${d.type}">
-      <div class="spec-head"><span class="source-icon">${c.code}</span><span><strong>${esc(d.name)}</strong><small>${esc(d.detail)}</small></span></div>
-      ${gallery ? `<div class="spec-gallery">${gallery}</div>` : (d.type === 'passport' || d.type === 'id') ? '<p class="spec-empty">Pas de spécimen à licence libre trouvé pour ce document. Consulte PRADO ou ajoute ton image.</p>' : ''}
-      <div class="spec-own" data-own="${c.code}:${d.type}"></div>
-      <div class="calc-actions">
-        <a class="secondary-btn spec-link" href="${prado(c.code)}" target="_blank" rel="noopener">Ouvrir dans PRADO ↗</a>
-        ${canUpload ? `<label class="secondary-btn">+ Ajouter une image<input type="file" accept="image/*" multiple data-upload="${c.code}:${d.type}" hidden /></label>` : ''}
-      </div></div>`;
+  // Écran 1 : recherche + zones (tient sur un écran)
+  function renderHome(focus) {
+    freeUrls();
+    App.header({ title: 'Procédure' });
+    body.innerHTML = `<div class="pad stack fill">
+      <label class="search"><span>⌕</span><input id="procSearch" type="search" placeholder="Rechercher un pays ou un code…" autocomplete="off" /></label>
+      <div class="zones" id="procZones">${order.map(k => `<button class="zone" data-zone="${k}"><span class="mono accent">${zones[k].icon}</span><strong>${zones[k].label}</strong><small>${zones[k].list.length} pays</small></button>`).join('')}</div>
+      <div class="list scroll" id="procResults" hidden></div>
+    </div>`;
+    const input = body.querySelector('#procSearch'), res = body.querySelector('#procResults'), zl = body.querySelector('#procZones');
+    input.addEventListener('input', () => {
+      const q = norm(input.value.trim());
+      zl.hidden = !!q; res.hidden = !q;
+      if (!q) return;
+      const rows = allCountries.filter(c => norm(`${c.name} ${c.code}`).includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      res.innerHTML = rows.length ? rows.map(countryRow).join('') : '<p class="empty">Aucun pays ne correspond.</p>';
+      bindCountries(res, null);
+    });
+    body.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => renderZone(b.dataset.zone)));
+    if (focus) setTimeout(() => input.focus(), 50);
   }
 
-  // Images ajoutées par l'utilisateur : plusieurs par document, chacune avec un libellé.
-  async function drawOwn(key) {
-    const box = body.querySelector(`[data-own="${key}"]`); if (!box || !S) return;
-    let recs; try { recs = (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).sort((a, b) => a.added - b.added); } catch { return; }
-    box.innerHTML = recs.map(r => { const u = URL.createObjectURL(r.blob); pageUrls.push(u);
-      return `<figure class="spec-fig"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></a><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="spec-del" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`; }).join('');
-    box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); drawOwn(key); } }));
+  // Écran 2 : pays d'une zone (seule la liste défile)
+  function renderZone(key) {
+    freeUrls();
+    const z = zones[key];
+    App.header({ title: z.label, back: () => renderHome() });
+    body.innerHTML = `<div class="pad stack fill">
+      <label class="search"><span>⌕</span><input id="zoneSearch" type="search" placeholder="Filtrer ${z.list.length} pays…" autocomplete="off" /></label>
+      <div class="list scroll" id="zoneList"></div>
+      ${key === 'schengen' ? '<p class="foot">29 États Schengen à la date de cette version : composition à revérifier.</p>' : ''}
+    </div>`;
+    const input = body.querySelector('#zoneSearch'), list = body.querySelector('#zoneList');
+    const draw = () => {
+      const q = norm(input.value.trim());
+      const rows = z.list.filter(c => norm(`${c.name} ${c.code}`).includes(q));
+      list.innerHTML = rows.length ? rows.map(countryRow).join('') : '<p class="empty">Aucun pays ne correspond.</p>';
+      bindCountries(list, key);
+    };
+    input.addEventListener('input', draw); draw();
   }
 
-  function renderCountry(zoneKey, code) {
-    pageUrls.splice(0).forEach(u => URL.revokeObjectURL(u));
+  // Écran 3 : fiche pays, un onglet par document. Seule la zone des pièces défile.
+  function renderCountry(code, from, docType) {
+    freeUrls();
     const c = allCountries.find(x => x.code === code);
     const docs = documentsFor(c);
-    body.innerHTML = `<button class="secondary-btn proc-back" data-back>← ${zones[zoneKey].label}</button>
-      <div class="section-head"><div><div class="eyebrow">DOSSIER PAYS · CODE ${c.code}</div><h2>${esc(c.name)}</h2></div><span class="tiny-tag">${tags(c).replace(/^ · /, '') || 'HORS UE'}</span></div>
-      <div class="source-list">${docs.map(d => docCard(c, d)).join('')}</div>
-      <a class="primary-btn spec-prado" href="${prado(c.code)}" target="_blank" rel="noopener">Tous les documents ${c.code} dans PRADO ↗</a>
-      <div class="notice"><strong>Spécimens</strong><p>Les images publiques viennent de Wikimedia Commons (licence libre, auteur indiqué ; touche une image pour voir sa source). La référence officielle reste PRADO. Ajoute uniquement des spécimens, jamais la pièce d'un client. Si le lien PRADO ne s'ouvre pas sur le bon pays, passe par <a href="${PRADO_SEARCH}" target="_blank" rel="noopener">la recherche par pays</a>.</p></div>`;
-    body.querySelector('[data-back]').addEventListener('click', () => renderZone(zoneKey));
-    docs.forEach(d => drawOwn(`${c.code}:${d.type}`));
-    body.querySelectorAll('[data-upload]').forEach(inp => inp.addEventListener('change', async () => {
-      if (!S || !inp.files.length) return;
-      const key = inp.dataset.upload, d = docs.find(x => `${c.code}:${x.type}` === key);
-      const existing = (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).map(r => r.label);
+    const d = docs.find(x => x.type === docType) || docs[0];
+    App.header({ title: c.name, back: () => from ? renderZone(from) : renderHome() });
+    const short = { passport: 'Passeport', id: c.code === 'IRL' ? 'Carte passeport' : 'CNI / eCNI', none: 'CNI', residence: 'Titre de séjour' };
+    const commons = (SPEC[c.code] && SPEC[c.code][d.type]) || [];
+    body.innerHTML = `<div class="pad stack fill">
+      <div class="row"><span class="chip mono">${c.code}</span><span class="muted small">${tags(c) || 'Hors UE'}</span></div>
+      <div class="seg" role="tablist">${docs.map(x => `<button role="tab" class="${x === d ? 'on' : ''}" aria-selected="${x === d}" data-doc="${x.type}">${short[x.type]}</button>`).join('')}</div>
+      <div class="scroll specs">
+        <p class="muted small">${esc(d.detail)}</p>
+        ${commons.map(img => `<figure class="spec"><a href="${img.page}" target="_blank" rel="noopener"><img src="${img.thumb}" alt="Spécimen ${esc(d.name)} — ${esc(c.name)}" loading="lazy" /></a><figcaption><b>${esc(img.label || '')}</b> · Wikimedia Commons · ${esc(img.license)}${img.artist ? ' · ' + esc(img.artist) : ''}</figcaption></figure>`).join('')}
+        <div id="ownSpecs"></div>
+        ${d.type === 'none' || commons.length ? '' : '<p class="empty" id="noSpec">Pas de spécimen libre pour ce document. Ouvre PRADO ou ajoute ton image.</p>'}
+      </div>
+      <div class="actions">
+        <a class="btn" href="${prado(c.code)}" target="_blank" rel="noopener">PRADO ↗</a>
+        ${d.type === 'none' ? '' : '<label class="btn btn-primary">+ Ajouter une image<input type="file" accept="image/*" multiple id="ownAdd" hidden /></label>'}
+      </div>
+    </div>`;
+    body.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => renderCountry(code, from, b.dataset.doc)));
+    const key = `${c.code}:${d.type}`;
+    const mine = async () => (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).sort((a, b) => a.added - b.added);
+    const drawOwn = async () => {
+      const box = body.querySelector('#ownSpecs'); if (!box) return;
+      let recs = [];
+      try { recs = await mine(); } catch { return; }
+      const empty = body.querySelector('#noSpec'); if (empty) empty.hidden = recs.length > 0;
+      box.innerHTML = recs.map(r => {
+        const u = URL.createObjectURL(r.blob); urls.push(u);
+        return `<figure class="spec"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></a><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="link" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`;
+      }).join('');
+      box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); drawOwn(); } }));
+    };
+    const add = body.querySelector('#ownAdd');
+    if (add) add.addEventListener('change', async () => {
+      const files = [...add.files]; add.value = ''; if (!files.length) return;
+      const existing = (await mine()).map(r => r.label);
       const suggestions = (d.labels || []).filter(l => !existing.includes(l));
-      for (const f of inp.files) {
+      for (const f of files) {
         const label = (prompt(`Nom de l'image (${f.name}) :`, suggestions.shift() || d.name) || '').trim() || d.name;
-        const blob = await S.compressImage(f);
-        await S.put('specimens', { id: `${key}:${S.uid()}`, label, blob, name: f.name, added: Date.now() });
+        await S.put('specimens', { id: `${key}:${S.uid()}`, label, blob: await S.compressImage(f), name: f.name, added: Date.now() });
       }
-      inp.value = ''; drawOwn(key);
-    }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      drawOwn();
+    });
+    drawOwn();
   }
 
-  document.querySelectorAll('[data-nav="procedure"]').forEach(b => b.addEventListener('click', renderZones));
-  renderZones();
+  App.on('procedure', opts => renderHome(opts.search));
 })();

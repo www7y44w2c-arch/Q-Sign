@@ -3,124 +3,121 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0c0b0d" />
-  <meta name="description" content="S'kam — référentiel documentaire et entraînement antifraude." />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0b0a0e" />
+  <meta name="description" content="S'kam — vérification documentaire : spécimens par pays, contrôles, suivi de cadence." />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://upload.wikimedia.org https://thumb.wikimedia.org; connect-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="S'kam" />
   <meta name="referrer" content="no-referrer" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <title>S'kam</title>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="#home" aria-label="S'kam accueil">
-        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 6v5.5c0 5-3.4 8.2-8 9.7-4.6-1.5-8-4.7-8-9.7V6l8-3.2Z"/><path d="m8.4 12.1 2.3 2.3 4.9-5"/></svg></span>
-        <span><strong>S'kam</strong><small>VÉRIFICATION DOCUMENTAIRE</small></span>
-      </a>
-      <button class="icon-btn" id="installBtn" aria-label="Installer l'application" title="Installer" hidden>↓</button>
+  <div class="app">
+    <header class="bar">
+      <button class="bar-btn" id="barBack" aria-label="Retour" hidden>‹</button>
+      <span class="bar-logo" id="barLogo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.8 20 6v5.5c0 5-3.4 8.2-8 9.7-4.6-1.5-8-4.7-8-9.7V6l8-3.2Z"/><path d="m8.4 12.1 2.3 2.3 4.9-5"/></svg></span>
+      <h1 class="bar-title" id="barTitle">S'kam</h1>
+      <button class="bar-btn bar-action" id="barAction" hidden></button>
     </header>
 
-    <main id="mainContent">
-      <section class="view active" id="view-home" data-view="home">
-        <div class="eyebrow">ESPACE DE TRAVAIL PERSONNEL</div>
-        <h1>La vérification,<br><span>avec méthode.</span></h1>
-        <p class="lede">Un référentiel documentaire et un espace d'entraînement pour structurer tes contrôles.</p>
-        <div class="status-strip"><span class="status-dot"></span><span>Tes saisies restent sur ce téléphone</span><span class="status-lock">⌑ Protégé</span></div>
-        <div class="section-head"><div><div class="eyebrow">ACCÈS RAPIDE</div><h2>Ton espace</h2></div></div>
-        <div class="quick-grid">
-          <button class="quick-card" data-go="procedure"><span class="quick-icon cyan">▤</span><strong>Référentiel</strong><small>Spécimens par pays</small><span class="card-arrow">↗</span></button>
-          <button class="quick-card" data-go="checks"><span class="quick-icon violet">⌕</span><strong>Méthode de contrôle</strong><small>Suivre une démarche</small><span class="card-arrow">↗</span></button>
-          <button class="quick-card" data-go="training"><span class="quick-icon amber">◎</span><strong>Entraînement</strong><small>Cas entièrement fictifs</small><span class="card-arrow">↗</span></button>
-          <button class="quick-card" data-go="sources"><span class="quick-icon green">⌘</span><strong>Sources officielles</strong><small>Consulter les références</small><span class="card-arrow">↗</span></button>
-          <button class="quick-card" data-go="reference"><span class="quick-icon violet">✎</span><strong>Cas complexes</strong><small>Ta base de cas anonymisés</small><span class="card-arrow">↗</span></button>
-          <button class="quick-card" data-go="calcul"><span class="quick-icon amber">∑</span><strong>Calcul</strong><small>Cadence et paliers du mois</small><span class="card-arrow">↗</span></button>
+    <main class="screens">
+      <!-- ACCUEIL -->
+      <section class="screen" data-screen="home">
+        <div class="pad stack">
+          <div class="hello"><span class="mono muted" id="homeDate"></span><h2>Bonjour<span class="accent">.</span></h2></div>
+          <button class="today" id="homeToday" aria-label="Ouvrir le calcul du jour">
+            <span class="today-top"><span class="label">AUJOURD'HUI</span><span class="mono muted" id="homeRate"></span></span>
+            <span class="today-num"><strong class="mono" id="homeCount">0</strong><span class="muted mono" id="homeTarget">/ 0</span></span>
+            <span class="meter"><span id="homeBar"></span></span>
+          </button>
+          <div class="today-actions"><button class="btn" id="homeMinus">−1</button><button class="btn btn-primary" id="homePlus">+1 dossier</button><button class="btn" id="homePlus10">+10</button></div>
+          <div class="tiles">
+            <button class="tile" data-open="reference"><span class="tile-ic">✎</span><strong>Cas complexes</strong><small>Tes cas anonymisés</small></button>
+            <button class="tile" data-open="training"><span class="tile-ic">◎</span><strong>Formation</strong><small>Cas fictifs</small></button>
+            <button class="tile" data-open="sources"><span class="tile-ic">⌘</span><strong>Sources</strong><small>PRADO, OACI…</small></button>
+            <button class="tile" data-open="search"><span class="tile-ic">⌕</span><strong>Chercher un pays</strong><small>Spécimens</small></button>
+          </div>
+          <p class="foot">Outil personnel. Ne remplace pas les procédures de ton établissement.</p>
         </div>
-        <div class="section-head"><div><div class="eyebrow">À RETENIR</div><h2>Le bon réflexe</h2></div></div>
-        <article class="insight-card"><div class="insight-symbol">!</div><div><strong>Une anomalie n'est pas une conclusion.</strong><p>Un signal doit être recoupé avec les procédures applicables et, si nécessaire, transmis au niveau de contrôle compétent.</p></div></article>
-        <div class="disclaimer">Outil personnel de formation et de consultation. Ne remplace jamais les procédures, outils ou décisions de ton établissement.</div>
       </section>
 
-      <section class="view" id="view-checks" data-view="checks">
-        <div class="eyebrow">PROCÉDURE DE TRAVAIL</div><h1>Une méthode <span>structurée.</span></h1>
-        <p class="lede">Un parcours général à adapter exclusivement aux consignes et outils autorisés par ton établissement.</p>
-        <div class="steps" id="checkSteps">
-          <label class="step"><input type="checkbox"><span class="step-num">01</span><span><strong>Identifier le document</strong><small>Type, pays émetteur, version présumée et contexte de contrôle.</small></span></label>
-          <label class="step"><input type="checkbox"><span class="step-num">02</span><span><strong>Consulter la référence applicable</strong><small>Confirmer que la fiche correspond au pays, au type et à la période concernés.</small></span></label>
-          <label class="step"><input type="checkbox"><span class="step-num">03</span><span><strong>Effectuer les contrôles autorisés</strong><small>Suivre les étapes prévues par les procédures internes et les équipements disponibles.</small></span></label>
-          <label class="step"><input type="checkbox"><span class="step-num">04</span><span><strong>Recouper les informations</strong><small>Rechercher les incohérences pertinentes sans conclure sur un seul indice.</small></span></label>
-          <label class="step"><input type="checkbox"><span class="step-num">05</span><span><strong>Tracer et escalader si nécessaire</strong><small>Documenter factuellement et appliquer le circuit de seconde vérification.</small></span></label>
+      <!-- PROCÉDURE (géré par procedure.js) -->
+      <section class="screen" data-screen="procedure"><div class="screen-body" id="procBody"></div></section>
+
+      <!-- CONTRÔLES -->
+      <section class="screen" data-screen="checks">
+        <div class="pad stack">
+          <p class="lead">Méthode générale, à adapter aux consignes de ton établissement.</p>
+          <div class="steps" id="checkSteps">
+            <label class="step"><input type="checkbox"><span class="step-n mono">01</span><span><strong>Identifier le document</strong><small>Type, pays, version, contexte.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">02</span><span><strong>Consulter la référence</strong><small>Fiche du bon pays, type et période.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">03</span><span><strong>Contrôles autorisés</strong><small>Selon les procédures et outils internes.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">04</span><span><strong>Recouper</strong><small>Ne jamais conclure sur un seul indice.</small></span></label>
+            <label class="step"><input type="checkbox"><span class="step-n mono">05</span><span><strong>Tracer et escalader</strong><small>Documenter, seconde vérification si besoin.</small></span></label>
+          </div>
+          <p class="foot">Une anomalie n'est pas une conclusion : recoupe et applique le circuit prévu.</p>
         </div>
-        <button class="secondary-btn" id="resetChecks">Réinitialiser la checklist</button>
-        <div class="notice"><strong>Pas de décision automatique</strong><p>Cette checklist est un support de réflexion. Les procédures internes et les instructions de conformité priment toujours.</p></div>
       </section>
 
-      <section class="view" id="view-training" data-view="training">
-        <div class="eyebrow">CENTRE D'ENTRAÎNEMENT</div><h1>Affûte tes <span>réflexes.</span></h1>
-        <p class="lede">Des situations fictives pour travailler le raisonnement, la prudence et la traçabilité.</p>
-        <div class="training-card" id="trainingCard">
-          <div class="training-top"><span class="tiny-tag">CAS FICTIF · <span id="caseNumber">01 / 03</span></span><span class="level">INITIATION</span></div>
-          <h2 id="caseTitle">Une information discordante</h2>
-          <p id="caseDescription">Deux éléments d'un dossier fictif présentent une différence d'orthographe sur le nom. Aucun autre élément n'est fourni.</p>
-          <div class="question">Quelle est la meilleure première réaction ?</div>
-          <div class="answers" id="answers"></div>
-          <div id="feedback" class="feedback" hidden></div>
-          <button class="primary-btn" id="nextCase" hidden>Cas suivant <span>→</span></button>
+      <!-- CALCUL (géré par calcul.js) -->
+      <section class="screen" data-screen="calcul"><div class="screen-body" id="calcBody"></div></section>
+
+      <!-- CAS COMPLEXES (géré par reference.js) -->
+      <section class="screen" data-screen="reference"><div class="screen-body" id="refBody"></div></section>
+
+      <!-- FORMATION -->
+      <section class="screen" data-screen="training">
+        <div class="pad stack">
+          <div class="card train">
+            <div class="row"><span class="chip mono" id="caseNumber">1 / 3</span><span class="chip chip-warn">CAS FICTIF</span></div>
+            <h3 id="caseTitle"></h3>
+            <p id="caseDescription" class="muted"></p>
+            <div class="answers" id="answers"></div>
+            <div id="feedback" class="feedback" hidden></div>
+          </div>
+          <div class="row"><span class="muted" id="scoreLabel">0 bonne réponse</span><button class="btn btn-primary" id="nextCase" hidden>Cas suivant →</button></div>
+          <span class="meter"><span id="progressBar"></span></span>
         </div>
-        <div class="training-foot"><span>Progression</span><strong id="scoreLabel">0 bonne réponse</strong></div>
-        <div class="progress-track"><span id="progressBar"></span></div>
-        <p class="micro-note">Les exercices n'utilisent aucun document réel et ne reproduisent pas de techniques de falsification.</p>
       </section>
 
-      <section class="view" id="view-sources" data-view="sources">
-        <div class="eyebrow">VEILLE & RÉFÉRENCES</div><h1>Partir des <span>sources.</span></h1>
-        <p class="lede">Les ressources officielles doivent rester la référence. Vérifie la date, la portée et les éventuelles limites de chaque publication.</p>
-        <div class="source-list">
-          <a class="source-card" href="https://www.consilium.europa.eu/prado/fr/" target="_blank" rel="noopener"><span class="source-icon">EU</span><span><strong>PRADO</strong><small>Registre public en ligne des documents authentiques d'identité et de voyage.</small><em>Conseil de l'Union européenne ↗</em></span></a>
-          <a class="source-card" href="https://www.icao.int/publications/pages/publication.aspx?docnum=9303" target="_blank" rel="noopener"><span class="source-icon">ICAO</span><span><strong>OACI — Doc 9303</strong><small>Normes et spécifications relatives aux documents de voyage lisibles à la machine.</small><em>Organisation de l'aviation civile internationale ↗</em></span></a>
-          <a class="source-card" href="https://www.service-public.fr/" target="_blank" rel="noopener"><span class="source-icon">FR</span><span><strong>Service-Public.fr</strong><small>Informations administratives officielles françaises, notamment sur les titres de séjour.</small><em>Administration française ↗</em></span></a>
-          <a class="source-card" href="https://www.frontex.europa.eu/" target="_blank" rel="noopener"><span class="source-icon">FX</span><span><strong>Frontex</strong><small>Ressources institutionnelles sur la gestion des frontières et la fraude documentaire.</small><em>Agence européenne ↗</em></span></a>
+      <!-- SOURCES -->
+      <section class="screen" data-screen="sources">
+        <div class="pad stack">
+          <a class="item" href="https://www.consilium.europa.eu/prado/fr/" target="_blank" rel="noopener"><span class="item-ic mono">EU</span><span class="item-txt"><strong>PRADO</strong><small>Registre public des documents d'identité et de voyage</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://www.icao.int/publications/pages/publication.aspx?docnum=9303" target="_blank" rel="noopener"><span class="item-ic mono">OACI</span><span class="item-txt"><strong>Doc 9303</strong><small>Normes des documents de voyage lisibles à la machine</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://www.service-public.fr/" target="_blank" rel="noopener"><span class="item-ic mono">FR</span><span class="item-txt"><strong>Service-Public.fr</strong><small>Titres de séjour et démarches françaises</small></span><span class="item-go">↗</span></a>
+          <a class="item" href="https://www.frontex.europa.eu/" target="_blank" rel="noopener"><span class="item-ic mono">FX</span><span class="item-txt"><strong>Frontex</strong><small>Gestion des frontières et fraude documentaire</small></span><span class="item-go">↗</span></a>
+          <p class="foot">Vérifie toujours la date et la portée de chaque source.</p>
         </div>
-        <div class="notice"><strong>Couverture progressive</strong><p>Le référentiel ne prétend pas couvrir tous les pays ni toutes les générations de documents. Chaque fiche complète devra être sourcée, datée et vérifiée avant usage.</p></div>
-      </section>
-
-      <section class="view" id="view-procedure" data-view="procedure">
-        <div class="eyebrow">PROCÉDURE PAR PAYS</div><h1>Le monde, <span>par zone.</span></h1>
-        <p class="lede">Choisis une zone, puis un pays, pour retrouver ses documents de référence et accéder aux spécimens officiels.</p>
-        <div id="procBody"></div>
-      </section>
-
-      <section class="view" id="view-calcul" data-view="calcul">
-        <div class="eyebrow">SUIVI DE PRODUCTION</div><h1>Ta cadence, <span>en chiffres.</span></h1>
-        <p class="lede">Saisis tes heures et tes dossiers chaque jour pour suivre ton objectif quotidien et ta progression vers les paliers du mois.</p>
-        <div id="calcBody"></div>
-      </section>
-
-      <section class="view" id="view-reference" data-view="reference">
-        <div class="eyebrow">RÉFÉRENCE</div><h1>Cas <span>complexes.</span></h1>
-        <p class="lede">Garde une trace des situations difficiles, anonymisées, pour t'en resservir comme référence.</p>
-        <div id="refBody"></div>
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="Navigation principale">
-      <button class="nav-item active" data-nav="home" aria-current="page"><span>⌂</span><small>Accueil</small></button>
-      <button class="nav-item" data-nav="procedure"><span>◍</span><small>Procédure</small></button>
-      <button class="nav-item" data-nav="checks"><span>☷</span><small>Contrôles</small></button>
-      <button class="nav-item" data-nav="calcul"><span>∑</span><small>Calcul</small></button>
+    <nav class="tabs" aria-label="Navigation principale">
+      <button class="tab active" data-tab="home" aria-current="page"><span>⌂</span><small>Accueil</small></button>
+      <button class="tab" data-tab="procedure"><span>◍</span><small>Procédure</small></button>
+      <button class="tab" data-tab="checks"><span>☷</span><small>Contrôles</small></button>
+      <button class="tab" data-tab="calcul"><span>∑</span><small>Calcul</small></button>
     </nav>
+
+    <div class="sheet-wrap" id="sheet" hidden>
+      <div class="sheet-backdrop" data-close></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+        <div class="sheet-head"><strong id="sheetTitle"></strong><button class="bar-btn" data-close aria-label="Fermer">✕</button></div>
+        <div class="sheet-body" id="sheetBody"></div>
+      </div>
+    </div>
   </div>
-  <script src="app.js"></script>
   <script src="store.js"></script>
+  <script src="app.js"></script>
   <script src="specimens.js"></script>
   <script src="procedure.js"></script>
   <script src="calcul.js"></script>
