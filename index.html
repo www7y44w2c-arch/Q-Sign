@@ -35,7 +35,13 @@
       <!-- ACCUEIL -->
       <section class="screen" data-screen="home">
         <div class="pad stack dash">
-          <div class="hello row"><div><span class="mono muted" id="homeDate"></span><h2><span id="homeHello">Bonjour</span><span class="accent">.</span></h2></div><span class="clock mono" id="homeClock"></span></div>
+          <div class="hello row"><div><span class="mono muted" id="homeDate"></span><h2 id="homeHelloBtn" role="button" tabindex="0" aria-label="Modifier mon prénom et mon planning"><span id="homeHello">Bonjour</span><span class="accent">.</span></h2></div><span class="clock mono" id="homeClock"></span></div>
+
+          <div class="card dcard plan-card" id="homePlan" role="button" tabindex="0" aria-label="Modifier mon planning">
+            <div class="row"><span class="label">PLANNING</span><span class="small mono" id="planHours"></span></div>
+            <span class="meter plan-meter"><span id="planBar"></span></span>
+            <div class="row small"><span id="planSummary" class="plan-sum"></span><span class="muted mono" id="planRight"></span></div>
+          </div>
 
           <div class="card dcard" id="homeToday" role="button" tabindex="0" aria-label="Ouvrir la calculette">
             <div class="row"><span class="label">AUJOURD'HUI</span><span class="small muted" id="homeStatus"></span></div>
@@ -52,7 +58,7 @@
           </div>
 
           <div class="card dcard week">
-            <div class="row"><span class="label">7 DERNIERS JOURS</span><span class="small muted" id="homeWeekTotal"></span></div>
+            <div class="row"><span><span class="label" id="homeWeekLabel">7 JOURS</span> <span class="small muted" id="homeWeekTotal"></span></span><span class="mini-seg" role="group" aria-label="Statistique du graphique"><button data-wk="n" class="on" aria-pressed="true">Dossiers</button><button data-wk="h" aria-pressed="false">Heures</button></span></div>
             <div class="wk-bars" id="homeWeek" role="list" aria-label="Dossiers par jour sur 7 jours"></div>
             <div class="small muted wk-detail" id="homeWeekDetail" aria-live="polite">Touche une barre · <span class="dash-key"></span> objectif du jour</div>
           </div>

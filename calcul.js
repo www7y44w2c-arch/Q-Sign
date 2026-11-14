@@ -1,7 +1,8 @@
 (() => {
   const S = window.BVStore, esc = S.esc;
   const KEY = 'bv.calcul';
-  const DEFAULT = { rate: 80, tiers: [9000, 12000, 14000], planned: {}, days: {} };
+  // plan : horaires habituels par jour de semaine (0 = dimanche) → { s:"09:00", e:"17:00", p:60 } (p = pause en minutes).
+  const DEFAULT = { rate: 80, tiers: [9000, 12000, 14000], planned: {}, days: {}, name: '', plan: {} };
   let data = Object.assign({}, DEFAULT, S.readLocal(KEY, {}));
   const save = () => S.writeLocal(KEY, data);
 
@@ -89,12 +90,88 @@
   }
   syncLive();
 
+  // ---------- Planning : horaires habituels de la semaine ----------
+  const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const hasPlan = () => Object.keys(data.plan || {}).length > 0;
+  const planOf = d => (data.plan || {})[new Date(d + 'T12:00').getDay()] || null;
+  const spanMin = p => { const m = toMin(p.e) - toMin(p.s); return m > 0 ? m : m + 1440; }; // fin < début = service de nuit
+  const planMin = d => { const p = planOf(d); return p ? Math.max(0, spanMin(p) - (p.p || 0)) : 0; };
+  function plannedDaysIn(month) {
+    if (!hasPlan()) return weekdaysIn(month);
+    const [y, m] = month.split('-').map(Number); let n = 0;
+    for (let k = 1; k <= new Date(y, m, 0).getDate(); k++) if (planOf(`${month}-${pad(k)}`)) n++;
+    return n;
+  }
+  function schedule() {
+    syncLive();
+    const t = today(), now = toMin(nowHM()), p = planOf(t), e = entry(t);
+    const out = { name: data.name || '', has: hasPlan(), n: e.n, today: null, next: null };
+    if (p) {
+      const s = toMin(p.s), len = spanMin(p), elapsed = Math.max(0, Math.min(len, now - s)), planH = planMin(t) / 60;
+      out.today = { s: p.s, e: p.e, planH, phase: now < s ? 'before' : now >= s + len ? 'after' : 'during', elapsed, remaining: len - elapsed, startsIn: s - now, pct: elapsed / len * 100, target: Math.round(planH * data.rate) };
+    }
+    for (let k = 0; k <= 7; k++) {
+      const d = shiftDay(t, k), q = planOf(d);
+      if (!q || (k === 0 && toMin(q.s) <= now)) continue;
+      out.next = { d, s: q.s, e: q.e, inMin: k * 1440 + toMin(q.s) - now, planH: planMin(d) / 60 };
+      break;
+    }
+    // Semaine en cours, du lundi au dimanche.
+    const monday = shiftDay(t, -((new Date(t + 'T12:00').getDay() + 6) % 7));
+    out.week = Array.from({ length: 7 }, (_, i) => { const d = shiftDay(monday, i); return { d, h: d <= t ? hoursOf(d) : 0, planH: planMin(d) / 60, n: entry(d).n, future: d > t, today: d === t }; });
+    return out;
+  }
+  function openPlanning(onDone) {
+    const row = w => {
+      const p = data.plan[w], v = p || { s: '09:00', e: '17:00', p: 60 }, off = p ? '' : 'disabled';
+      return `<div class="plan-row ${p ? '' : 'off'}" data-w="${w}">
+        <label class="plan-day"><input type="checkbox" name="on${w}" ${p ? 'checked' : ''} aria-label="Je travaille le ${DAY_NAMES[w].toLowerCase()}" /><span>${DAY_NAMES[w].slice(0, 3)}</span></label>
+        <input type="time" name="s${w}" value="${v.s}" ${off} aria-label="Début du ${DAY_NAMES[w].toLowerCase()}" /><span class="muted">→</span>
+        <input type="time" name="e${w}" value="${v.e}" ${off} aria-label="Fin du ${DAY_NAMES[w].toLowerCase()}" />
+        <input type="number" name="p${w}" value="${v.p || 0}" ${off} inputmode="numeric" min="0" max="240" step="5" aria-label="Pause du ${DAY_NAMES[w].toLowerCase()} en minutes" /></div>`;
+    };
+    const el = App.sheet('Mon planning', `<form class="form" id="planForm">
+        <label class="field"><span>Ton prénom</span><input name="name" maxlength="24" autocomplete="given-name" placeholder="Prénom" value="${esc(data.name || '')}" /></label>
+        <p class="foot">Coche tes jours de travail et indique tes horaires habituels. La pause (dernière colonne, en minutes) est déduite des heures prévues.</p>
+        <div class="plan-head small muted"><span>Jour</span><span>Début</span><span></span><span>Fin</span><span>Pause</span></div>
+        ${WEEK_ORDER.map(row).join('')}
+        <p class="small" id="planSum"></p>
+        <button class="btn btn-primary" type="submit">Enregistrer</button>
+      </form>`);
+    const form = el.querySelector('#planForm');
+    const read = () => {
+      const plan = {};
+      WEEK_ORDER.forEach(w => {
+        if (!form.elements['on' + w].checked) return;
+        const s = form.elements['s' + w].value, e = form.elements['e' + w].value;
+        if (!s || !e || s === e) return;
+        plan[w] = { s, e, p: Math.max(0, Math.min(240, Math.round(Number(form.elements['p' + w].value) || 0))) };
+      });
+      return plan;
+    };
+    const update = () => {
+      WEEK_ORDER.forEach(w => { const on = form.elements['on' + w].checked; form.querySelector(`[data-w="${w}"]`).classList.toggle('off', !on); ['s', 'e', 'p'].forEach(k => { form.elements[k + w].disabled = !on; }); });
+      const plan = read(), days = Object.keys(plan).length;
+      const min = Object.values(plan).reduce((t, p) => t + Math.max(0, spanMin(p) - p.p), 0);
+      el.querySelector('#planSum').textContent = days ? `${days} jour${days > 1 ? 's' : ''} · ${fmtDur(min)} prévues par semaine · objectif ≈ ${fmt(min / 60 * data.rate)} dossiers` : 'Aucun jour coché : l’appli compte les jours ouvrés (lun–ven) par défaut.';
+    };
+    form.addEventListener('input', update); form.addEventListener('change', update); update();
+    form.addEventListener('submit', ev => {
+      ev.preventDefault();
+      data.name = form.elements.name.value.trim().slice(0, 24);
+      data.plan = read();
+      save(); App.closeSheet(); App.toast('Planning enregistré');
+      if (onDone) onDone(); if (App.current === 'calcul') render();
+    });
+  }
+
   function monthStats(month) {
     const days = Object.entries(data.days).filter(([d, v]) => d.startsWith(month) && (v.n || v.h)).sort((a, b) => b[0].localeCompare(a[0]));
     const total = days.reduce((s, [, v]) => s + (v.n || 0), 0);
     const hours = days.reduce((s, [, v]) => s + (v.h || 0), 0);
     const worked = days.length;
-    const planned = data.planned[month] ?? weekdaysIn(month);
+    const planned = data.planned[month] ?? plannedDaysIn(month);
     const remaining = Math.max(0, planned - worked);
     const perDay = worked ? total / worked : 0;
     return { days, total, hours, worked, planned, remaining, perDay, projection: total + perDay * remaining };
@@ -110,7 +187,9 @@
     week() { syncLive(); return Array.from({ length: 7 }, (_, i) => { const d = shiftDay(today(), i - 6), e = entry(d), h = hoursOf(d); return { d, n: e.n, h, target: Math.round(h * data.rate) }; }); },
     state: () => state(today()),
     toggle: () => chronoToggle(),
-    stop: () => chronoStop()
+    stop: () => chronoStop(),
+    schedule,
+    openPlanning
   };
 
   let view = 'day', day = today(), month = today().slice(0, 7), buf = '', flash = '', clock = null;
@@ -327,6 +406,7 @@
         ${data.tiers.map((t, i) => `<label class="field"><span>Palier ${i + 1} (dossiers / mois)</span><input name="tier${i}" type="number" inputmode="numeric" min="0" step="100" value="${t}" /></label>`).join('')}
         <button class="btn btn-primary" type="submit">Enregistrer</button>
       </form>
+      <button class="btn" id="calcPlanning">🗓 Mon planning et prénom</button>
       <p class="foot">Tes chiffres sont enregistrés uniquement sur ce téléphone. Exporte-les de temps en temps.</p>
       <div class="actions"><button class="btn" id="calcExport">Exporter</button><label class="btn">Importer<input id="calcImport" type="file" accept="application/json,.json" hidden /></label></div>`);
     el.querySelector('#calcSettings').addEventListener('submit', ev => {
@@ -335,6 +415,7 @@
       data.tiers = data.tiers.map((t, i) => Math.max(0, Number(f.get('tier' + i)) || t));
       save(); App.closeSheet(); render();
     });
+    el.querySelector('#calcPlanning').addEventListener('click', () => openPlanning());
     el.querySelector('#calcExport').addEventListener('click', () => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }));

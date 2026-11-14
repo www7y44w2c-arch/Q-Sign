@@ -364,3 +364,31 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .seg-row input{width:100%;min-height:var(--tap);padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);font:600 16px var(--mono);color-scheme:dark}
 @media(max-height:700px){.bar{min-height:calc(50px + var(--safe-t));padding-top:calc(5px + var(--safe-t));padding-bottom:5px}.bar-logo{width:34px;height:34px;flex-basis:34px}.bar-logo svg{width:20px}.wk-bars{height:56px}.hello h2{font-size:18px}.hello span{font-size:12px}.dash{gap:6px}.kpis small{font-size:10px}}
 .hello h2 span{font-size:inherit;text-transform:none}
+/* Planning : carte d'accueil, bascule du graphique, formulaire des horaires */
+.hello h2[role=button]{cursor:pointer}
+.plan-card{gap:6px}
+.plan-meter{height:4px}
+.plan-meter span{background:linear-gradient(90deg,#2a7d6c,var(--good))}
+.plan-sum{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+#planRight{flex:0 0 auto;white-space:nowrap}
+.mini-seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:9px;background:var(--surface2)}
+.mini-seg button{border:0;background:none;color:var(--muted);font:600 11px var(--sans);padding:4px 8px;border-radius:7px;min-height:26px}
+.mini-seg button.on{background:var(--accent-bg);color:var(--accent)}
+.wk-col.future .wk-lbl{opacity:.6}
+.plan-head,.plan-row{display:grid;grid-template-columns:58px 1fr 10px 1fr 58px;align-items:center;gap:6px}
+.plan-head span{font-size:11px}
+.plan-row input[type=time],.plan-row input[type=number]{width:100%;min-width:0;min-height:var(--tap);padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);font:600 15px var(--mono);color-scheme:dark}
+.plan-row.off input[type=time],.plan-row.off input[type=number]{opacity:.35}
+.plan-day{display:flex;align-items:center;gap:6px;font:700 13px var(--sans);color:var(--text)}
+.plan-day input{width:18px;height:18px;accent-color:var(--accent-strong)}
+@media(max-height:700px){.plan-card{gap:4px}.mini-seg button{padding:3px 6px;min-height:22px}}
+/* Le graphique prend la place restante : l'accueil tient sans défilement, même avec la carte planning */
+.dash{flex:1;min-height:0}
+.dash .week{flex:1 1 0;min-height:0}
+.dash .wk-bars{flex:1;height:auto;min-height:40px}
+@media(max-height:700px){
+  .plan-card .row:first-child{display:none}
+  .dash .wk-bars{min-height:30px}
+  .hero strong{font-size:26px}
+  .shortcuts .btn{min-height:38px}
+}
