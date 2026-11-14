@@ -8,6 +8,15 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://upload.wikimedia.org https://thumb.wikimedia.org; connect-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="S'kam" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="styles.css" />
   <title>S'kam</title>
 </head>
@@ -26,10 +35,10 @@
         <div class="eyebrow">ESPACE DE TRAVAIL PERSONNEL</div>
         <h1>La vérification,<br><span>avec méthode.</span></h1>
         <p class="lede">Un référentiel documentaire et un espace d'entraînement pour structurer tes contrôles.</p>
-        <div class="status-strip"><span class="status-dot"></span><span>Mode local · aucune donnée transmise</span><span class="status-lock">⌑ Protégé</span></div>
+        <div class="status-strip"><span class="status-dot"></span><span>Tes saisies restent sur ce téléphone</span><span class="status-lock">⌑ Protégé</span></div>
         <div class="section-head"><div><div class="eyebrow">ACCÈS RAPIDE</div><h2>Ton espace</h2></div></div>
         <div class="quick-grid">
-          <button class="quick-card" data-go="library"><span class="quick-icon cyan">▤</span><strong>Référentiel</strong><small>Explorer les documents</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="procedure"><span class="quick-icon cyan">▤</span><strong>Référentiel</strong><small>Spécimens par pays</small><span class="card-arrow">↗</span></button>
           <button class="quick-card" data-go="checks"><span class="quick-icon violet">⌕</span><strong>Méthode de contrôle</strong><small>Suivre une démarche</small><span class="card-arrow">↗</span></button>
           <button class="quick-card" data-go="training"><span class="quick-icon amber">◎</span><strong>Entraînement</strong><small>Cas entièrement fictifs</small><span class="card-arrow">↗</span></button>
           <button class="quick-card" data-go="sources"><span class="quick-icon green">⌘</span><strong>Sources officielles</strong><small>Consulter les références</small><span class="card-arrow">↗</span></button>
@@ -39,17 +48,6 @@
         <div class="section-head"><div><div class="eyebrow">À RETENIR</div><h2>Le bon réflexe</h2></div></div>
         <article class="insight-card"><div class="insight-symbol">!</div><div><strong>Une anomalie n'est pas une conclusion.</strong><p>Un signal doit être recoupé avec les procédures applicables et, si nécessaire, transmis au niveau de contrôle compétent.</p></div></article>
         <div class="disclaimer">Outil personnel de formation et de consultation. Ne remplace jamais les procédures, outils ou décisions de ton établissement.</div>
-      </section>
-
-      <section class="view" id="view-library" data-view="library">
-        <div class="eyebrow">BASE DOCUMENTAIRE</div><h1>Référentiel <span>mondial.</span></h1>
-        <p class="lede">Retrouve une fiche de référence et vérifie toujours sa version et sa source officielle.</p>
-        <label class="searchbox"><span>⌕</span><input id="searchInput" type="search" placeholder="Pays, document, code pays…" autocomplete="off" /></label>
-        <div class="filter-row" id="typeFilters"><button class="filter active" data-type="all">Tout</button><button class="filter" data-type="id">Carte d'identité</button><button class="filter" data-type="passport">Passeport</button><button class="filter" data-type="residence">Séjour</button></div>
-        <div class="result-meta"><span id="resultCount">4 fiches de démonstration</span><span class="tiny-tag">ÉCHANTILLON V1</span></div>
-        <div class="document-list" id="documentList"></div>
-        <div class="empty-state" id="emptyState" hidden>Aucun résultat. Essaie un autre pays ou un autre type de document.</div>
-        <div class="notice"><strong>Important</strong><p>Les fiches initiales sont des entrées de démonstration. Elles ne constituent pas un guide d'authentification et ne décrivent pas les dispositifs de sécurité des documents.</p></div>
       </section>
 
       <section class="view" id="view-checks" data-view="checks">
@@ -115,7 +113,7 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Navigation principale">
-      <button class="nav-item active" data-nav="home"><span>⌂</span><small>Accueil</small></button>
+      <button class="nav-item active" data-nav="home" aria-current="page"><span>⌂</span><small>Accueil</small></button>
       <button class="nav-item" data-nav="procedure"><span>◍</span><small>Procédure</small></button>
       <button class="nav-item" data-nav="checks"><span>☷</span><small>Contrôles</small></button>
       <button class="nav-item" data-nav="calcul"><span>∑</span><small>Calcul</small></button>

@@ -14,7 +14,13 @@
     try { cases = (await S.all('cases')).sort((a, b) => b.updated - a.updated); } catch { body.innerHTML = '<div class="empty-state">Le stockage local n\'est pas disponible sur ce navigateur.</div>'; return; }
     body.innerHTML = `<button class="primary-btn ref-new" id="refNew">+ Nouveau cas complexe</button>
       <label class="searchbox"><span>⌕</span><input id="refSearch" type="search" placeholder="Titre, pays, type, mot-clé…" autocomplete="off" value="${esc(query)}" /></label>
-      <div class="document-list proc-list" id="refList"></div>${WARNING}`;
+      <div class="document-list proc-list" id="refList"></div>${WARNING}
+      <details class="notice calc-settings"><summary><strong>Sauvegarde des cas et des spécimens</strong></summary>
+        <p>Les cas complexes, leurs pièces jointes et tes images de spécimens sont enregistrés uniquement sur ce téléphone. Exporte-les de temps en temps (fichier à garder en lieu sûr).</p>
+        <div class="calc-actions"><button class="secondary-btn" id="refExport">Exporter</button><label class="secondary-btn">Importer<input id="refImport" type="file" accept="application/json,.json" hidden /></label></div>
+      </details>`;
+    document.getElementById('refExport').addEventListener('click', exportAll);
+    document.getElementById('refImport').addEventListener('change', importAll);
     const draw = () => {
       const q = document.getElementById('refSearch').value.trim().toLocaleLowerCase('fr');
       const rows = cases.filter(c => [c.title, c.country, c.type, c.status, c.description, c.issue, c.decision].join(' ').toLocaleLowerCase('fr').includes(q));
@@ -108,6 +114,32 @@
     });
     drawFiles();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const toB64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(blob); });
+  const fromB64 = async url => (await fetch(url)).blob();
+  async function exportAll() {
+    try {
+      const [cases, files, specimens] = await Promise.all([S.all('cases'), S.all('files'), S.all('specimens')]);
+      const pack = async list => Promise.all(list.map(async x => Object.assign({}, x, { blob: await toB64(x.blob) })));
+      const data = { app: 'skam', version: 1, exported: new Date().toISOString(), cases, files: await pack(files), specimens: await pack(specimens) };
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+      a.download = `skam-cas-specimens-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch { alert("L'export a échoué."); }
+  }
+  async function importAll(ev) {
+    const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (d.app !== 'skam' || !Array.isArray(d.cases)) throw new Error();
+      if (!confirm(`Importer ${d.cases.length} cas et ${(d.specimens || []).length} images de spécimens ? Les éléments existants avec le même identifiant seront remplacés.`)) return;
+      for (const x of d.files || []) await S.put('files', Object.assign({}, x, { blob: await fromB64(x.blob) }));
+      for (const x of d.specimens || []) await S.put('specimens', Object.assign({}, x, { blob: await fromB64(x.blob) }));
+      for (const x of d.cases) await S.put('cases', x);
+      renderList();
+    } catch { alert("Ce fichier n'est pas une sauvegarde S'kam valide."); }
   }
 
   document.querySelectorAll('[data-go="reference"]').forEach(b => b.addEventListener('click', () => renderList()));
