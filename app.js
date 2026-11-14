@@ -71,12 +71,38 @@ window.App = (() => {
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const fmt1 = n => (Math.round(n * 10) / 10).toLocaleString('fr-FR');
   const pad = n => String(n).padStart(2, '0');
-  let tick = null, selected = 6;
+  const fmtDur = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} h ${pad(m)}` : `${m} min`; };
+  const fmtWait = min => min >= 1440 ? `${Math.floor(min / 1440)} j ${Math.floor(min % 1440 / 60)} h` : fmtDur(min);
+  const dayName = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+  let tick = null, selected = 6, wkMode = BVStore.readLocal('bv.homeWeek', 'n') === 'h' ? 'h' : 'n';
+
+  // Carte planning : horaires du jour, temps écoulé / restant, objectif, prochain service.
+  function renderPlan(sc) {
+    const T = sc.today, nx = sc.next;
+    const nextTxt = nx ? `Prochain : ${dayName(nx.d)} ${nx.s} · dans ${fmtWait(nx.inMin)}` : '';
+    let hours = '', sum = '', right = '', pct = 0;
+    if (!sc.has) { sum = 'Ajoute ton prénom et tes horaires'; right = '✎'; }
+    else if (!T) { hours = 'Repos'; sum = nextTxt || 'Aucun service prévu'; }
+    else {
+      hours = `${T.s} → ${T.e} · ${fmt1(T.planH)} h`; pct = T.pct;
+      const left = T.target - sc.n;
+      if (T.phase === 'before') { sum = `Objectif ${fmt(T.target)} dossiers`; right = `début dans ${fmtWait(T.startsIn)}`; }
+      else if (T.phase === 'during') {
+        sum = left > 0 ? `Encore ${fmt(left)} / ${fmt(T.target)} · ${fmt1(left / Math.max(T.remaining / 60, 1 / 60))}/h` : `Objectif ${fmt(T.target)} atteint ✓`;
+        right = `${fmtDur(T.elapsed)} · reste ${fmtDur(T.remaining)}`;
+      } else { sum = left > 0 ? `${fmt(sc.n)} / ${fmt(T.target)} · manque ${fmt(left)}` : `Objectif ${fmt(T.target)} atteint ✓`; right = nx ? `${dayName(nx.d).slice(0, 3)}. ${nx.s}` : 'terminé'; }
+    }
+    $('#planHours').textContent = hours;
+    $('#planSummary').textContent = sum;
+    $('#planRight').textContent = right;
+    $('#planBar').style.width = `${Math.min(100, pct)}%`;
+  }
 
   function render() {
     const C = window.SkamCalc; if (!C) return;
-    const now = new Date();
-    const hr = now.getHours(); $('#homeHello').textContent = hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour';
+    const now = new Date(), sc = C.schedule();
+    const hr = now.getHours(); $('#homeHello').textContent = (hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour') + (sc.name ? ` ${sc.name}` : '');
+    renderPlan(sc);
     $('#homeDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     $('#homeClock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
@@ -109,21 +135,36 @@ window.App = (() => {
     $('#homeAvg').textContent = m.worked ? fmt(m.perDay) : '—';
     $('#homeDays').textContent = `${m.worked}/${m.planned}`;
 
-    // 7 derniers jours : barres + objectif du jour en pointillé
-    const w = C.week(), top = Math.max(1, ...w.map(x => Math.max(x.n, x.target)));
-    $('#homeWeekTotal').textContent = `${fmt(w.reduce((s, x) => s + x.n, 0))} dossiers`;
+    // Graphique : dossiers des 7 derniers jours (pointillé = objectif) ou heures de la semaine (pointillé = prévu).
+    const H = wkMode === 'h';
+    const w = H ? sc.week.map(x => ({ d: x.d, val: x.h, target: x.planH, n: x.n, today: x.today, future: x.future }))
+                : C.week().map((x, i) => ({ d: x.d, val: x.n, target: x.target, h: x.h, today: i === 6 }));
+    const top = Math.max(1, ...w.map(x => Math.max(x.val, x.target)));
+    const todayIdx = w.findIndex(x => x.today);
+    if (selected < 0 || selected > 6) selected = todayIdx;
+    document.querySelectorAll('[data-wk]').forEach(b => { const on = b.dataset.wk === wkMode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    $('#homeWeekLabel').textContent = H ? 'SEMAINE' : '7 JOURS';
+    const doneH = sc.week.reduce((s, x) => s + x.h, 0), planH = sc.week.reduce((s, x) => s + x.planH, 0);
+    $('#homeWeekTotal').textContent = H ? `${fmt1(doneH)} h${planH ? ` / ${fmt1(planH)} h` : ''}` : `${fmt(w.reduce((s, x) => s + x.val, 0))} dossiers`;
+    $('#homeWeek').setAttribute('aria-label', H ? 'Heures faites et prévues, semaine en cours' : 'Dossiers par jour sur 7 jours');
     $('#homeWeek').innerHTML = w.map((x, i) => {
       const lbl = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'narrow' });
-      return `<button class="wk-col ${i === selected ? 'sel' : ''}" role="listitem" data-i="${i}" aria-label="${new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })} : ${x.n} dossiers${x.target ? `, objectif ${x.target}` : ''}">
-        <span class="wk-area">${x.target ? `<span class="wk-target" style="bottom:${x.target / top * 100}%"></span>` : ''}<span class="wk-bar" style="height:${x.n ? Math.max(3, x.n / top * 100) : 0}%"></span></span>
-        <span class="wk-lbl mono">${i === 6 ? 'auj' : lbl}</span></button>`;
+      const long = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+      const aria = H ? `${long} : ${fmt1(x.val)} heures${x.target ? `, prévu ${fmt1(x.target)}` : ''}` : `${long} : ${x.val} dossiers${x.target ? `, objectif ${x.target}` : ''}`;
+      return `<button class="wk-col ${i === selected ? 'sel' : ''} ${x.future ? 'future' : ''}" role="listitem" data-i="${i}" aria-label="${aria}">
+        <span class="wk-area">${x.target ? `<span class="wk-target" style="bottom:${x.target / top * 100}%"></span>` : ''}<span class="wk-bar" style="height:${x.val ? Math.max(3, x.val / top * 100) : 0}%"></span></span>
+        <span class="wk-lbl mono">${x.today ? 'auj' : lbl}</span></button>`;
     }).join('');
     const showDetail = i => {
       const x = w[i], d = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
-      $('#homeWeekDetail').innerHTML = `<b>${d}</b> · ${fmt(x.n)} dossiers${x.h ? ` · ${fmt1(x.h)} h · ${fmt1(x.n / x.h)}/h` : ''}${x.target ? ` · objectif ${fmt(x.target)}` : ''}`;
+      $('#homeWeekDetail').innerHTML = H
+        ? `<b>${d}</b> · ${x.future ? 'à venir' : `${fmt1(x.val)} h faites`}${x.target ? ` · ${fmt1(x.target)} h prévues` : ' · repos'}${x.n ? ` · ${fmt(x.n)} dossiers` : ''}`
+        : `<b>${d}</b> · ${fmt(x.val)} dossiers${x.h ? ` · ${fmt1(x.h)} h · ${fmt1(x.val / x.h)}/h` : ''}${x.target ? ` · objectif ${fmt(x.target)}` : ''}`;
     };
     $('#homeWeek').querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { selected = Number(b.dataset.i); $('#homeWeek').querySelectorAll('.wk-col').forEach(c => c.classList.toggle('sel', c === b)); showDetail(selected); }));
-    if (selected !== 6 || t.n) showDetail(selected);
+    if (H && selected === todayIdx && !w[selected].val) $('#homeWeekDetail').innerHTML = planH ? `Reste ${fmt1(Math.max(0, planH - doneH))} h prévues cette semaine · <span class="dash-key"></span> prévu` : 'Ajoute ton planning pour voir les heures prévues';
+    else if (selected !== todayIdx || w[selected].val) showDetail(selected);
+    else $('#homeWeekDetail').innerHTML = 'Touche une barre · <span class="dash-key"></span> objectif du jour';
   }
 
   $('#homePlus').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.add(1); render(); });
@@ -131,8 +172,12 @@ window.App = (() => {
   const open = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
   open($('#homeToday'), () => App.go('calcul'));
   open($('#homeMonth'), () => App.go('calcul', { view: 'month' }));
+  const editPlan = () => window.SkamCalc && window.SkamCalc.openPlanning(render);
+  open($('#homePlan'), editPlan);
+  open($('#homeHelloBtn'), editPlan);
+  document.querySelectorAll('[data-wk]').forEach(b => b.addEventListener('click', () => { wkMode = b.dataset.wk; BVStore.writeLocal('bv.homeWeek', wkMode); selected = -1; render(); }));
   App.on('home', () => {
-    selected = 6; render();
+    selected = -1; render();
     clearInterval(tick);
     tick = setInterval(() => { if (App.current !== 'home' || document.hidden) return; render(); }, 20000);
   });
