@@ -23,7 +23,8 @@
   function setDay(d, patch) {
     const v = Object.assign({ h: 0, n: 0 }, data.days[d], patch);
     v.n = Math.max(0, Math.round(v.n)); v.h = Math.max(0, Math.min(24, v.h));
-    if (!v.h && !v.n) delete data.days[d]; else data.days[d] = v;
+    if (v.start === undefined) delete v.start;
+    if (!v.h && !v.n && !v.start) delete data.days[d]; else data.days[d] = v;
     save();
   }
   function monthStats(month) {
@@ -37,47 +38,128 @@
     return { days, total, hours, worked, planned, remaining, perDay, projection: total + perDay * remaining };
   }
 
+  // Heures effectives : saisies à la main, ou calculées depuis l'heure de début (en direct pour aujourd'hui).
+  const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const toMin = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+  function hoursOf(d) {
+    const e = entry(d);
+    if (e.start && d === today()) return Math.max(0, Math.min(24, (toMin(nowHM()) - toMin(e.start)) / 60));
+    return e.h || 0;
+  }
+  // Garde les heures enregistrées à jour quand le chrono tourne (pour le mois et l'historique).
+  function syncLive() {
+    const t = today(), e = data.days[t];
+    if (e && e.start) { const h = Math.round(hoursOf(t) * 100) / 100; if (h !== e.h) { e.h = h; save(); } }
+  }
+
   // API utilisée par l'accueil.
   window.SkamCalc = {
-    today() { const e = entry(today()); return { n: e.n, h: e.h, target: Math.round(e.h * data.rate), pace: e.h ? fmt1(e.n / e.h) : '—' }; },
+    today() { syncLive(); const t = today(), e = entry(t), h = hoursOf(t); return { n: e.n, h: Math.round(h * 10) / 10, target: Math.round(h * data.rate), pace: h ? fmt1(e.n / h) : '—' }; },
     add(k) { const t = today(); setDay(t, { n: entry(t).n + k }); }
   };
 
-  let view = 'day', day = today(), month = today().slice(0, 7);
+  let view = 'day', day = today(), month = today().slice(0, 7), buf = '', flash = '', clock = null;
   const body = document.getElementById('calcBody');
 
   function render() {
     App.header({ title: 'Calcul', action: { label: '⚙', aria: 'Réglages et sauvegarde', fn: openSettings } });
-    const seg = `<div class="seg"><button class="${view === 'day' ? 'on' : ''}" data-view="day">Jour</button><button class="${view === 'month' ? 'on' : ''}" data-view="month">Mois</button></div>`;
-    body.innerHTML = `<div class="pad stack fill">${seg}${view === 'day' ? dayHtml() : monthHtml()}</div>`;
-    body.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; render(); }));
+    const seg = `<div class="seg"><button class="${view === 'day' ? 'on' : ''}" data-view="day">Calculette</button><button class="${view === 'month' ? 'on' : ''}" data-view="month">Mois</button></div>`;
+    body.innerHTML = `<div class="pad stack fill calc">${seg}${view === 'day' ? dayHtml() : monthHtml()}</div>`;
+    body.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.view; buf = ''; render(); }));
     view === 'day' ? bindDay() : bindMonth();
+    clearInterval(clock);
+    if (view === 'day') clock = setInterval(() => { if (App.current !== 'calcul') return clearInterval(clock); syncLive(); updateDisplay(); }, 15000);
   }
 
-  function dayHtml() {
-    const e = entry(day), target = e.h * data.rate, diff = e.n - target;
-    return `<div class="nav-row"><button class="btn icon" data-d="-1" aria-label="Jour précédent">‹</button><strong>${esc(dayLabel(day))}</strong><button class="btn icon" data-d="1" aria-label="Jour suivant" ${day >= today() ? 'disabled' : ''}>›</button></div>
-      <div class="card counter">
-        <span class="label">DOSSIERS TRAITÉS</span>
-        <input class="big mono" id="calcCount" type="number" inputmode="numeric" min="0" value="${e.n}" aria-label="Dossiers traités" />
-        <div class="counter-btns"><button class="btn" data-add="-1">−1</button><button class="btn btn-primary" data-add="1">+1</button><button class="btn" data-add="10">+10</button></div>
+  // ---------- Calculette ----------
+  const KEYS = [
+    ['C', 'clear', 'k-fn'], ['⌫', 'back', 'k-fn'], ['⏱', 'start', 'k-fn'], ['−', 'sub', 'k-op'],
+    ['7', '7'], ['8', '8'], ['9', '9'], ['+', 'add', 'k-op'],
+    ['4', '4'], ['5', '5'], ['6', '6'], ['h', 'hours', 'k-op'],
+    ['1', '1'], ['2', '2'], ['3', '3'], ['=', 'set', 'k-op'],
+    ['0', '0', 'k-wide'], [',', 'comma'], ['+1', 'plus1', 'k-eq']
+  ];
+  function displayHtml() {
+    const e = entry(day), h = hoursOf(day), target = h * data.rate, diff = e.n - target;
+    const live = e.start && day === today();
+    return `<div class="lcd" id="lcd">
+      <div class="lcd-top">
+        <button class="lcd-day" data-d="-1" aria-label="Jour précédent">‹</button>
+        <label class="lcd-date"><span>${esc(dayLabel(day))}</span><input type="date" id="calcDate" value="${day}" max="${today()}" aria-label="Choisir le jour" /></label>
+        <button class="lcd-day" data-d="1" aria-label="Jour suivant" ${day >= today() ? 'disabled' : ''}>›</button>
+        <span class="lcd-clock mono">${nowHM()}</span>
       </div>
-      <div class="card hours"><span class="label">HEURES</span><div class="stepper"><button class="btn icon" data-h="-0.5" aria-label="Moins une demi-heure">−</button><input class="mono" id="calcHours" type="number" inputmode="decimal" min="0" max="24" step="0.25" value="${e.h || 0}" aria-label="Heures travaillées" /><button class="btn icon" data-h="0.5" aria-label="Plus une demi-heure">+</button></div></div>
-      <div class="stats3">
+      <div class="lcd-entry mono">${buf ? esc(buf) : flash ? esc(flash) : '&nbsp;'}</div>
+      <div class="lcd-total"><strong class="mono">${fmt(e.n)}</strong><span>dossiers</span></div>
+      <div class="lcd-stats">
+        <div><small>Heures${live ? ' ⏱' : ''}</small><strong class="mono">${fmt1(h)}</strong></div>
+        <div><small>Cadence/h</small><strong class="mono">${h ? fmt1(e.n / h) : '—'}</strong></div>
         <div><small>Objectif</small><strong class="mono">${fmt(target)}</strong></div>
         <div><small>Écart</small><strong class="mono ${diff >= 0 ? 'good' : 'warn'}">${diff >= 0 ? '+' : ''}${fmt(diff)}</strong></div>
-        <div><small>Cadence</small><strong class="mono">${e.h ? fmt1(e.n / e.h) : '—'}</strong></div>
       </div>
       <span class="meter"><span style="width:${target ? Math.min(100, e.n / target * 100) : 0}%"></span></span>
-      <p class="foot">Objectif = heures × ${data.rate} dossiers/heure.</p>`;
+      <div class="lcd-foot small muted">${e.start ? `Début ${e.start}${live ? ' · chrono en cours' : ''}` : 'Saisis un nombre puis + − = ou h · ⏱ démarre la journée'}</div>
+    </div>`;
+  }
+  function dayHtml() {
+    return `${displayHtml()}<div class="keypad">${KEYS.map(([label, k, cls]) => `<button class="key ${cls || ''}" data-key="${k}" aria-label="${{ clear: 'Effacer la saisie', back: 'Effacer le dernier chiffre', start: 'Début de journée', sub: 'Retirer du total', add: 'Ajouter au total', hours: 'Fixer les heures', set: 'Fixer le total', plus1: 'Plus un dossier', comma: 'Virgule' }[k] || label}">${label}</button>`).join('')}</div>`;
+  }
+  function updateDisplay() {
+    const lcd = body.querySelector('#lcd'); if (!lcd) return;
+    lcd.outerHTML = displayHtml(); bindDisplay();
+  }
+  function bindDisplay() {
+    body.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => { day = shiftDay(day, Number(b.dataset.d)); if (day > today()) day = today(); buf = ''; flash = ''; updateDisplay(); }));
+    const date = body.querySelector('#calcDate');
+    date.addEventListener('change', () => { if (date.value && date.value <= today()) { day = date.value; buf = ''; flash = ''; updateDisplay(); } });
+  }
+  const num = () => Number(buf.replace(',', '.'));
+  function press(k) {
+    const e = entry(day);
+    flash = '';
+    if (/^\d$/.test(k)) { if (buf.replace(',', '').length < 6) buf = buf === '0' ? k : buf + k; }
+    else if (k === 'comma') { if (!buf.includes(',')) buf = (buf || '0') + ','; }
+    else if (k === 'back') buf = buf.slice(0, -1);
+    else if (k === 'clear') buf = '';
+    else if (k === 'plus1') { setDay(day, { n: e.n + 1 }); flash = '+1'; }
+    else if (k === 'add' || k === 'sub' || k === 'set') {
+      if (!buf) { flash = 'Saisis d\'abord un nombre'; }
+      else {
+        const v = Math.round(num());
+        const n = k === 'add' ? e.n + v : k === 'sub' ? e.n - v : v;
+        setDay(day, { n }); flash = k === 'add' ? `+${fmt(v)}` : k === 'sub' ? `−${fmt(v)}` : `= ${fmt(v)}`; buf = '';
+      }
+    } else if (k === 'hours') {
+      if (!buf) { flash = 'Saisis les heures, ex. 7,5'; }
+      else { const v = Math.min(24, num()); setDay(day, { h: v, start: undefined }); delete (data.days[day] || {}).start; save(); flash = `${fmt1(v)} h`; buf = ''; }
+    } else if (k === 'start') {
+      if (day !== today()) { flash = 'Le chrono ne marche que pour aujourd\'hui'; }
+      else if (buf) {
+        // 8 → 08:00 · 830 → 08:30 · 8,5 → 08:30
+        let hh, mm;
+        if (buf.includes(',')) { const v = num(); hh = Math.floor(v); mm = Math.round((v - hh) * 60); }
+        else if (buf.length <= 2) { hh = Number(buf); mm = 0; }
+        else { hh = Number(buf.slice(0, -2)); mm = Number(buf.slice(-2)); }
+        if (hh > 23 || mm > 59) flash = 'Heure invalide';
+        else { const start = `${pad(hh)}:${pad(mm)}`; if (toMin(start) > toMin(nowHM())) flash = 'Heure dans le futur'; else { setDay(day, { start }); syncLive(); flash = `Début ${start}`; } }
+        buf = '';
+      } else if (e.start) { syncLive(); const d = data.days[day]; delete d.start; save(); flash = 'Chrono arrêté'; }
+      else { setDay(day, { start: nowHM() }); flash = `Début ${nowHM()}`; }
+    }
+    updateDisplay();
   }
   function bindDay() {
-    body.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => { day = shiftDay(day, Number(b.dataset.d)); if (day > today()) day = today(); render(); }));
-    body.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => { setDay(day, { n: entry(day).n + Number(b.dataset.add) }); render(); }));
-    body.querySelectorAll('[data-h]').forEach(b => b.addEventListener('click', () => { setDay(day, { h: entry(day).h + Number(b.dataset.h) }); render(); }));
-    body.querySelector('#calcCount').addEventListener('change', ev => { setDay(day, { n: Number(ev.target.value) || 0 }); render(); });
-    body.querySelector('#calcHours').addEventListener('change', ev => { setDay(day, { h: Number(String(ev.target.value).replace(',', '.')) || 0 }); render(); });
+    bindDisplay();
+    body.querySelectorAll('[data-key]').forEach(b => b.addEventListener('click', () => press(b.dataset.key)));
   }
+  // Clavier physique (ordinateur) quand la calculette est affichée.
+  document.addEventListener('keydown', ev => {
+    if (App.current !== 'calcul' || view !== 'day' || !document.getElementById('sheet').hidden) return;
+    if (ev.target.matches('input, textarea, select')) return;
+    const map = { Backspace: 'back', Escape: 'clear', Delete: 'clear', '+': 'add', '-': 'sub', '=': 'set', Enter: 'set', h: 'hours', H: 'hours', ',': 'comma', '.': 'comma' };
+    const k = /^\d$/.test(ev.key) ? ev.key : map[ev.key];
+    if (k) { ev.preventDefault(); press(k); }
+  });
 
   function monthHtml() {
     const m = monthStats(month);
@@ -149,5 +231,5 @@
     if (document.visibilityState !== 'visible') return;
     const t = today(); if (t !== lastToday) { if (day === lastToday) day = t; month = t.slice(0, 7); lastToday = t; if (App.current === 'calcul') render(); }
   });
-  App.on('calcul', () => { day = today(); month = day.slice(0, 7); render(); });
+  App.on('calcul', () => { day = today(); month = day.slice(0, 7); buf = ''; flash = ''; syncLive(); render(); });
 })();
