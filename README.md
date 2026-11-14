@@ -1,38 +1,31 @@
-# S'kam (ex BANK VERIFY AI)
+# S'kam
 
-Application web mobile-first (PWA) en HTML/CSS/JavaScript, sans dépendance ni API externe.
+Application web mobile (PWA) d'aide à la vérification documentaire : HTML, CSS et JavaScript, sans dépendance ni serveur. Publiée sur GitHub Pages : https://www7y44w2c-arch.github.io/Q-Sign/
 
-## Lancer sur un PC
+## Onglets
+- **Accueil** : accès rapide à toutes les rubriques.
+- **Procédure** : zones (Schengen, Europe, Afrique, Amériques, Asie & Moyen-Orient, Océanie), puis pays. Par pays : passeport (2e et 3e de couverture), CNI / eCNI, titre de séjour pour la France. Spécimens à licence libre de Wikimedia Commons (auteur et licence affichés), lien direct vers PRADO, ajout de ses propres images.
+- **Contrôles** : méthode de contrôle en 5 étapes.
+- **Calcul** : heures travaillées, compteur de dossiers, objectif à 80 dossiers/heure, suivi du mois, projection et paliers (9 000 / 12 000 / 14 000), tous réglables.
+- Depuis l'accueil : **Cas complexes** (fiches anonymisées avec pièces jointes), **Entraînement** (cas fictifs), **Sources officielles**.
 
-- Ouvrir `index.html` directement pour tester l'interface.
-- Pour tester le mode PWA/service worker, servir le dossier en HTTP local :
-  - Python : `python -m http.server 8000`
-  - Puis ouvrir `http://localhost:8000`
+## Données
+Tout ce qui est saisi reste sur l'appareil (localStorage et IndexedDB) : rien n'est envoyé sur Internet. Des boutons d'export / import permettent de sauvegarder le Calcul, les cas complexes et les spécimens ajoutés.
 
-## Installer sur iPhone
+## Fichiers
+| Fichier | Rôle |
+| --- | --- |
+| `index.html`, `styles.css` | Structure et thème (noir / blanc / violet) |
+| `app.js` | Navigation, entraînement, installation |
+| `store.js` | Stockage local (IndexedDB / localStorage) |
+| `procedure.js`, `specimens.js` | Onglet Procédure et liste des spécimens Commons |
+| `calcul.js` | Onglet Calcul |
+| `reference.js` | Cas complexes |
+| `sw.js`, `manifest.webmanifest`, `icons/` | Mode hors ligne et installation |
 
-Pour l'installation PWA, héberger le dossier sur une adresse HTTPS autorisée, ouvrir cette adresse dans Safari, puis utiliser **Partager > Sur l'écran d'accueil**. Le service worker nécessite HTTPS (ou localhost).
+## Tester en local
+`python -m http.server 8000` puis http://localhost:8000
 
-## Contenu de cette V1
-
-- Accueil et navigation mobile en quatre onglets
-- Recherche et filtres sur un petit échantillon de fiches de démonstration
-- Checklist de méthode générale
-- Trois exercices fictifs avec correction et score
-- Liens vers des sources institutionnelles
-- Cache hors ligne de l'application
-
-## Limites importantes
-
-- Les fiches de documents sont des placeholders de démonstration, pas un référentiel authentifiant.
-- Aucun téléversement d'image, OCR, reconnaissance faciale ou analyse automatique n'est implémenté.
-- Aucun document client, donnée bancaire, identité réelle ou capture QuickSign ne doit être saisi dans cette application personnelle.
-- Les procédures et outils autorisés par l'employeur priment. Usage professionnel uniquement après validation explicite de l'employeur.
-- Les liens externes nécessitent une connexion et peuvent évoluer.
-
-## Suite proposée
-
-1. Valider l'ergonomie sur iPhone.
-2. Définir le schéma de données des fiches (pays, type, version, validité, source, date de vérification, limites).
-3. Constituer les premières fiches à partir de sources officielles, sans reproduire de détails sensibles de sécurité qui faciliteraient la falsification.
-4. Ajouter une vraie gestion des favoris, des notes non sensibles et de la progression.
+## Limites
+- Les spécimens ne couvrent pas tous les pays ; PRADO reste la référence officielle.
+- Aucune donnée client (nom, numéro, copie de pièce réelle) ne doit être saisie. Les procédures et outils de l'employeur priment.

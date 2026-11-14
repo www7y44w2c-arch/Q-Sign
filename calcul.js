@@ -118,6 +118,12 @@
     });
   }
 
+  // Passe automatiquement au nouveau jour si l'app reste ouverte après minuit.
+  let lastToday = today();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const t = today(); if (t !== lastToday) { if (day === lastToday) day = t; lastToday = t; render(); }
+  });
   document.querySelectorAll('[data-nav="calcul"],[data-go="calcul"]').forEach(b => b.addEventListener('click', () => { day = today(); render(); }));
   render();
 })();
