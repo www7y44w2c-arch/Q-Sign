@@ -1,0 +1,12 @@
+{
+  "name": "BANK VERIFY AI",
+  "short_name": "BANK VERIFY",
+  "description": "Référentiel documentaire et entraînement antifraude",
+  "lang": "fr-FR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08111f",
+  "theme_color": "#08111f",
+  "icons": []
+}

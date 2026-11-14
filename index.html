@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#08111f" />
+  <meta name="description" content="BANK VERIFY AI — référentiel documentaire et entraînement antifraude." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>BANK VERIFY AI</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="BANK VERIFY AI accueil">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 6v5.5c0 5-3.4 8.2-8 9.7-4.6-1.5-8-4.7-8-9.7V6l8-3.2Z"/><path d="m8.4 12.1 2.3 2.3 4.9-5"/></svg></span>
+        <span><strong>BANK VERIFY</strong><small>DOCUMENT INTELLIGENCE</small></span>
+      </a>
+      <button class="icon-btn" id="installBtn" aria-label="Installer l'application" title="Installer" hidden>↓</button>
+    </header>
+
+    <main id="mainContent">
+      <section class="view active" id="view-home" data-view="home">
+        <div class="eyebrow">ESPACE DE TRAVAIL PERSONNEL</div>
+        <h1>La vérification,<br><span>avec méthode.</span></h1>
+        <p class="lede">Un référentiel documentaire et un espace d'entraînement pour structurer tes contrôles.</p>
+        <div class="status-strip"><span class="status-dot"></span><span>Mode local · aucune donnée transmise</span><span class="status-lock">⌑ Protégé</span></div>
+        <div class="section-head"><div><div class="eyebrow">ACCÈS RAPIDE</div><h2>Ton espace</h2></div></div>
+        <div class="quick-grid">
+          <button class="quick-card" data-go="library"><span class="quick-icon cyan">▤</span><strong>Référentiel</strong><small>Explorer les documents</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="checks"><span class="quick-icon violet">⌕</span><strong>Méthode de contrôle</strong><small>Suivre une démarche</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="training"><span class="quick-icon amber">◎</span><strong>Entraînement</strong><small>Cas entièrement fictifs</small><span class="card-arrow">↗</span></button>
+          <button class="quick-card" data-go="sources"><span class="quick-icon green">⌘</span><strong>Sources officielles</strong><small>Consulter les références</small><span class="card-arrow">↗</span></button>
+        </div>
+        <div class="section-head"><div><div class="eyebrow">À RETENIR</div><h2>Le bon réflexe</h2></div></div>
+        <article class="insight-card"><div class="insight-symbol">!</div><div><strong>Une anomalie n'est pas une conclusion.</strong><p>Un signal doit être recoupé avec les procédures applicables et, si nécessaire, transmis au niveau de contrôle compétent.</p></div></article>
+        <div class="disclaimer">Outil personnel de formation et de consultation. Ne remplace jamais les procédures, outils ou décisions de ton établissement.</div>
+      </section>
+
+      <section class="view" id="view-library" data-view="library">
+        <div class="eyebrow">BASE DOCUMENTAIRE</div><h1>Référentiel <span>mondial.</span></h1>
+        <p class="lede">Retrouve une fiche de référence et vérifie toujours sa version et sa source officielle.</p>
+        <label class="searchbox"><span>⌕</span><input id="searchInput" type="search" placeholder="Pays, document, code pays…" autocomplete="off" /></label>
+        <div class="filter-row" id="typeFilters"><button class="filter active" data-type="all">Tout</button><button class="filter" data-type="id">Carte d'identité</button><button class="filter" data-type="passport">Passeport</button><button class="filter" data-type="residence">Séjour</button></div>
+        <div class="result-meta"><span id="resultCount">4 fiches de démonstration</span><span class="tiny-tag">ÉCHANTILLON V1</span></div>
+        <div class="document-list" id="documentList"></div>
+        <div class="empty-state" id="emptyState" hidden>Aucun résultat. Essaie un autre pays ou un autre type de document.</div>
+        <div class="notice"><strong>Important</strong><p>Les fiches initiales sont des entrées de démonstration. Elles ne constituent pas un guide d'authentification et ne décrivent pas les dispositifs de sécurité des documents.</p></div>
+      </section>
+
+      <section class="view" id="view-checks" data-view="checks">
+        <div class="eyebrow">PROCÉDURE DE TRAVAIL</div><h1>Une méthode <span>structurée.</span></h1>
+        <p class="lede">Un parcours général à adapter exclusivement aux consignes et outils autorisés par ton établissement.</p>
+        <div class="steps" id="checkSteps">
+          <label class="step"><input type="checkbox"><span class="step-num">01</span><span><strong>Identifier le document</strong><small>Type, pays émetteur, version présumée et contexte de contrôle.</small></span></label>
+          <label class="step"><input type="checkbox"><span class="step-num">02</span><span><strong>Consulter la référence applicable</strong><small>Confirmer que la fiche correspond au pays, au type et à la période concernés.</small></span></label>
+          <label class="step"><input type="checkbox"><span class="step-num">03</span><span><strong>Effectuer les contrôles autorisés</strong><small>Suivre les étapes prévues par les procédures internes et les équipements disponibles.</small></span></label>
+          <label class="step"><input type="checkbox"><span class="step-num">04</span><span><strong>Recouper les informations</strong><small>Rechercher les incohérences pertinentes sans conclure sur un seul indice.</small></span></label>
+          <label class="step"><input type="checkbox"><span class="step-num">05</span><span><strong>Tracer et escalader si nécessaire</strong><small>Documenter factuellement et appliquer le circuit de seconde vérification.</small></span></label>
+        </div>
+        <button class="secondary-btn" id="resetChecks">Réinitialiser la checklist</button>
+        <div class="notice"><strong>Pas de décision automatique</strong><p>Cette checklist est un support de réflexion. Les procédures internes et les instructions de conformité priment toujours.</p></div>
+      </section>
+
+      <section class="view" id="view-training" data-view="training">
+        <div class="eyebrow">CENTRE D'ENTRAÎNEMENT</div><h1>Affûte tes <span>réflexes.</span></h1>
+        <p class="lede">Des situations fictives pour travailler le raisonnement, la prudence et la traçabilité.</p>
+        <div class="training-card" id="trainingCard">
+          <div class="training-top"><span class="tiny-tag">CAS FICTIF · <span id="caseNumber">01 / 03</span></span><span class="level">INITIATION</span></div>
+          <h2 id="caseTitle">Une information discordante</h2>
+          <p id="caseDescription">Deux éléments d'un dossier fictif présentent une différence d'orthographe sur le nom. Aucun autre élément n'est fourni.</p>
+          <div class="question">Quelle est la meilleure première réaction ?</div>
+          <div class="answers" id="answers"></div>
+          <div id="feedback" class="feedback" hidden></div>
+          <button class="primary-btn" id="nextCase" hidden>Cas suivant <span>→</span></button>
+        </div>
+        <div class="training-foot"><span>Progression</span><strong id="scoreLabel">0 bonne réponse</strong></div>
+        <div class="progress-track"><span id="progressBar"></span></div>
+        <p class="micro-note">Les exercices n'utilisent aucun document réel et ne reproduisent pas de techniques de falsification.</p>
+      </section>
+
+      <section class="view" id="view-sources" data-view="sources">
+        <div class="eyebrow">VEILLE & RÉFÉRENCES</div><h1>Partir des <span>sources.</span></h1>
+        <p class="lede">Les ressources officielles doivent rester la référence. Vérifie la date, la portée et les éventuelles limites de chaque publication.</p>
+        <div class="source-list">
+          <a class="source-card" href="https://www.consilium.europa.eu/prado/fr/" target="_blank" rel="noopener"><span class="source-icon">EU</span><span><strong>PRADO</strong><small>Registre public en ligne des documents authentiques d'identité et de voyage.</small><em>Conseil de l'Union européenne ↗</em></span></a>
+          <a class="source-card" href="https://www.icao.int/publications/pages/publication.aspx?docnum=9303" target="_blank" rel="noopener"><span class="source-icon">ICAO</span><span><strong>OACI — Doc 9303</strong><small>Normes et spécifications relatives aux documents de voyage lisibles à la machine.</small><em>Organisation de l'aviation civile internationale ↗</em></span></a>
+          <a class="source-card" href="https://www.service-public.fr/" target="_blank" rel="noopener"><span class="source-icon">FR</span><span><strong>Service-Public.fr</strong><small>Informations administratives officielles françaises, notamment sur les titres de séjour.</small><em>Administration française ↗</em></span></a>
+          <a class="source-card" href="https://www.frontex.europa.eu/" target="_blank" rel="noopener"><span class="source-icon">FX</span><span><strong>Frontex</strong><small>Ressources institutionnelles sur la gestion des frontières et la fraude documentaire.</small><em>Agence européenne ↗</em></span></a>
+        </div>
+        <div class="notice"><strong>Couverture progressive</strong><p>Le référentiel ne prétend pas couvrir tous les pays ni toutes les générations de documents. Chaque fiche complète devra être sourcée, datée et vérifiée avant usage.</p></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navigation principale">
+      <button class="nav-item active" data-nav="home"><span>⌂</span><small>Accueil</small></button>
+      <button class="nav-item" data-nav="library"><span>▤</span><small>Documents</small></button>
+      <button class="nav-item" data-nav="checks"><span>☷</span><small>Contrôles</small></button>
+      <button class="nav-item" data-nav="training"><span>◎</span><small>Formation</small></button>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
