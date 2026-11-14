@@ -6,20 +6,43 @@ window.App = (() => {
   const enter = {};
   let current = 'home';
 
-  function header({ title, back, action } = {}) {
+  function header({ title, back, action, logo } = {}) {
     $('#barTitle').textContent = title || TITLES[current] || "S'kam";
+    $('#barTitle').hidden = !!logo;
+    $('#barLogo').hidden = !logo;
     const b = $('#barBack'); b.hidden = !back; b.onclick = back || null;
-    $('#barLogo').hidden = !!back;
     const a = $('#barAction'); a.hidden = !action;
     if (action) { a.textContent = action.label; a.setAttribute('aria-label', action.aria || action.label); a.onclick = action.fn; } else a.onclick = null;
   }
+
+  // Message bref en bas de l'écran.
+  let toastTimer;
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+
+  // Visionneuse plein écran (zoom par bouton ou double-tap, défilement dans l'image zoomée).
+  function view(src, caption, source) {
+    const box = $('#viewerImg'); box.classList.remove('zoom');
+    box.innerHTML = `<img src="${src}" alt="${String(caption || 'Spécimen').replace(/"/g, '&quot;')}" />`;
+    $('#viewerCap').textContent = caption || '';
+    const link = $('#viewerSource'); link.hidden = !source; if (source) link.href = source;
+    $('#viewer').hidden = false;
+  }
+  const closeViewer = () => { $('#viewer').hidden = true; $('#viewerImg').innerHTML = ''; };
+  const toggleZoom = () => $('#viewerImg').classList.toggle('zoom');
+  $('#viewerClose').addEventListener('click', closeViewer);
+  $('#viewerZoom').addEventListener('click', toggleZoom);
+  $('#viewerImg').addEventListener('dblclick', toggleZoom);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#viewer').hidden) closeViewer(); });
 
   function go(name, opts) {
     current = name;
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.dataset.screen === name));
     document.querySelectorAll('.tab').forEach(t => { const on = t.dataset.tab === TAB_OF[name]; t.classList.toggle('active', on); on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current'); });
     const isTab = TAB_OF[name] === name;
-    header({ title: TITLES[name], back: isTab ? null : () => go('home') });
+    header({ title: TITLES[name], back: isTab ? null : () => go('home'), logo: name === 'home' });
     closeSheet();
     if (enter[name]) enter[name](opts || {});
   }
@@ -39,7 +62,7 @@ window.App = (() => {
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => go(t.dataset.tab)));
   document.querySelectorAll('[data-open]').forEach(t => t.addEventListener('click', () => t.dataset.open === 'search' ? go('procedure', { search: true }) : go(t.dataset.open)));
 
-  return { go, header, sheet, closeSheet, on: (name, fn) => { enter[name] = fn; }, get current() { return current; } };
+  return { go, header, sheet, closeSheet, toast, view, on: (name, fn) => { enter[name] = fn; }, get current() { return current; } };
 })();
 
 // ---------- Accueil : tableau de bord ----------
@@ -53,6 +76,7 @@ window.App = (() => {
   function render() {
     const C = window.SkamCalc; if (!C) return;
     const now = new Date();
+    const hr = now.getHours(); $('#homeHello').textContent = hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour';
     $('#homeDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     $('#homeClock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
@@ -116,7 +140,16 @@ window.App = (() => {
 })();
 
 // ---------- Contrôles ----------
-App.on('checks', () => App.header({ title: 'Contrôles', action: { label: '↺', aria: 'Réinitialiser la checklist', fn: () => document.querySelectorAll('#checkSteps input').forEach(i => { i.checked = false; }) } }));
+(() => {
+  const reset = () => document.querySelectorAll('#checkSteps input').forEach(i => { i.checked = false; });
+  App.on('checks', () => App.header({ title: 'Contrôles', action: { label: '↺', aria: 'Réinitialiser la checklist', fn: reset } }));
+  document.getElementById('checksDone').addEventListener('click', () => {
+    if (window.SkamCalc) window.SkamCalc.add(1);
+    reset();
+    const t = window.SkamCalc && window.SkamCalc.today();
+    App.toast(`+1 dossier · ${t ? t.n : ''} aujourd'hui`);
+  });
+})();
 
 // ---------- Formation ----------
 (() => {
