@@ -1,5 +1,6 @@
 (() => {
-  const PRADO = 'https://www.consilium.europa.eu/prado/fr/search-by-document-country.html';
+  const PRADO_SEARCH = 'https://www.consilium.europa.eu/prado/fr/search-by-document-country.html';
+  const prado = code => `https://www.consilium.europa.eu/prado/fr/prado-documents/${code}/index.html`;
   // Espace Schengen (29 États) et Union européenne (27 États) : composition à revérifier régulièrement.
   const SCHENGEN = 'DEU AUT BEL BGR HRV DNK ESP EST FIN FRA GRC HUN ISL ITA LVA LIE LTU LUX MLT NOR NLD POL PRT ROU SVK SVN SWE CHE CZE'.split(' ');
   const UE = 'DEU AUT BEL BGR CYP HRV DNK ESP EST FIN FRA GRC HUN IRL ITA LVA LTU LUX MLT NLD POL PRT ROU SVK SVN SWE CZE'.split(' ');
@@ -15,17 +16,13 @@
   zones.schengen = { label: 'Espace Schengen', icon: 'SC', cls: 'green', list: allCountries.filter(c => SCHENGEN.includes(c.code)) };
   const order = ['schengen', 'europe', 'afrique', 'ameriques', 'asie', 'oceanie'];
 
+  // Documents suivis : passeport (2e et 3e de couverture), CNI / eCNI, titre de séjour pour la France uniquement.
   function documentsFor(c) {
-    const europe = UE.includes(c.code) || SCHENGEN.includes(c.code);
-    if (!europe) return [
-      { type: 'passport', name: 'Passeport', detail: 'Document de voyage' },
-      { type: 'id', name: "Carte d'identité et autres titres", detail: 'Selon les documents délivrés par le pays et répertoriés dans PRADO' }
-    ];
-    const docs = [{ type: 'passport', name: 'Passeport', detail: 'Document de voyage' }];
+    const docs = [{ type: 'passport', name: 'Passeport', detail: '2e et 3e de couverture (pages de données)', labels: ['2e de couverture', '3e de couverture'] }];
     if (c.code === 'DNK') docs.push({ type: 'none', name: "Pas de carte nationale d'identité", detail: "Le Danemark ne délivre pas de carte d'identité nationale : vérifier les autres titres dans PRADO" });
-    else if (c.code === 'IRL') docs.push({ type: 'id', name: 'Carte passeport', detail: "Passport card, utilisée comme document d'identité" });
-    else docs.push({ type: 'id', name: "Carte d'identité", detail: 'Document national' });
-    docs.push({ type: 'residence', name: 'Titre de séjour', detail: 'Modèle uniforme européen délivré aux ressortissants de pays tiers' });
+    else if (c.code === 'IRL') docs.push({ type: 'id', name: 'Carte passeport', detail: "Passport card, utilisée comme document d'identité", labels: ['Recto', 'Verso'] });
+    else docs.push({ type: 'id', name: "Carte d'identité (CNI / eCNI)", detail: 'Toutes les versions en circulation', labels: ['CNI recto', 'CNI verso', 'eCNI recto', 'eCNI verso'] });
+    if (c.code === 'FRA') docs.push({ type: 'residence', name: 'Titre de séjour', detail: 'Titres de séjour français', labels: ['Recto', 'Verso'] });
     return docs;
   }
 
@@ -73,18 +70,18 @@
       ${gallery ? `<div class="spec-gallery">${gallery}</div>` : (d.type === 'passport' || d.type === 'id') ? '<p class="spec-empty">Pas de spécimen à licence libre trouvé pour ce document. Consulte PRADO ou ajoute ton image.</p>' : ''}
       <div class="spec-own" data-own="${c.code}:${d.type}"></div>
       <div class="calc-actions">
-        <a class="secondary-btn spec-link" href="${PRADO}" target="_blank" rel="noopener">PRADO (pays : ${c.code}) ↗</a>
-        ${canUpload ? `<label class="secondary-btn">+ Mon spécimen<input type="file" accept="image/*" data-upload="${c.code}:${d.type}" hidden /></label>` : ''}
+        <a class="secondary-btn spec-link" href="${prado(c.code)}" target="_blank" rel="noopener">Ouvrir dans PRADO ↗</a>
+        ${canUpload ? `<label class="secondary-btn">+ Ajouter une image<input type="file" accept="image/*" multiple data-upload="${c.code}:${d.type}" hidden /></label>` : ''}
       </div></div>`;
   }
 
+  // Images ajoutées par l'utilisateur : plusieurs par document, chacune avec un libellé.
   async function drawOwn(key) {
     const box = body.querySelector(`[data-own="${key}"]`); if (!box || !S) return;
-    let rec; try { rec = await S.get('specimens', key); } catch { return; }
-    if (!rec) { box.innerHTML = ''; return; }
-    const u = URL.createObjectURL(rec.blob); pageUrls.push(u);
-    box.innerHTML = `<figure class="spec-fig"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="Mon spécimen" /></a><figcaption>Mon spécimen · enregistré sur ce téléphone · <button type="button" class="spec-del" data-del="${key}">Supprimer</button></figcaption></figure>`;
-    box.querySelector('[data-del]').addEventListener('click', async () => { if (confirm('Supprimer ton image de spécimen ?')) { await S.del('specimens', key); drawOwn(key); } });
+    let recs; try { recs = (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).sort((a, b) => a.added - b.added); } catch { return; }
+    box.innerHTML = recs.map(r => { const u = URL.createObjectURL(r.blob); pageUrls.push(u);
+      return `<figure class="spec-fig"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="${esc(r.label || 'Mon spécimen')}" /></a><figcaption><b>${esc(r.label || 'Mon spécimen')}</b> · sur ce téléphone · <button type="button" class="spec-del" data-del="${esc(r.id)}">Supprimer</button></figcaption></figure>`; }).join('');
+    box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { if (confirm('Supprimer cette image ?')) { await S.del('specimens', b.dataset.del); drawOwn(key); } }));
   }
 
   function renderCountry(zoneKey, code) {
@@ -94,14 +91,21 @@
     body.innerHTML = `<button class="secondary-btn proc-back" data-back>← ${zones[zoneKey].label}</button>
       <div class="section-head"><div><div class="eyebrow">DOSSIER PAYS · CODE ${c.code}</div><h2>${esc(c.name)}</h2></div><span class="tiny-tag">${tags(c).replace(/^ · /, '') || 'HORS UE'}</span></div>
       <div class="source-list">${docs.map(d => docCard(c, d)).join('')}</div>
-      <div class="notice"><strong>Spécimens</strong><p>Les images publiques viennent de Wikimedia Commons (licence libre, auteur indiqué ; touche une image pour voir sa source). Pour la référence officielle et toutes les versions, consulte PRADO et choisis le pays <b>${c.code}</b>. Ajoute uniquement des spécimens, jamais la pièce d'un client.</p></div>`;
+      <a class="primary-btn spec-prado" href="${prado(c.code)}" target="_blank" rel="noopener">Tous les documents ${c.code} dans PRADO ↗</a>
+      <div class="notice"><strong>Spécimens</strong><p>Les images publiques viennent de Wikimedia Commons (licence libre, auteur indiqué ; touche une image pour voir sa source). La référence officielle reste PRADO. Ajoute uniquement des spécimens, jamais la pièce d'un client. Si le lien PRADO ne s'ouvre pas sur le bon pays, passe par <a href="${PRADO_SEARCH}" target="_blank" rel="noopener">la recherche par pays</a>.</p></div>`;
     body.querySelector('[data-back]').addEventListener('click', () => renderZone(zoneKey));
     docs.forEach(d => drawOwn(`${c.code}:${d.type}`));
     body.querySelectorAll('[data-upload]').forEach(inp => inp.addEventListener('change', async () => {
-      const f = inp.files[0]; if (!f || !S) return;
-      const blob = await S.compressImage(f);
-      await S.put('specimens', { id: inp.dataset.upload, blob, name: f.name, added: Date.now() });
-      inp.value = ''; drawOwn(inp.dataset.upload);
+      if (!S || !inp.files.length) return;
+      const key = inp.dataset.upload, d = docs.find(x => `${c.code}:${x.type}` === key);
+      const existing = (await S.all('specimens')).filter(r => r.id === key || r.id.startsWith(key + ':')).map(r => r.label);
+      const suggestions = (d.labels || []).filter(l => !existing.includes(l));
+      for (const f of inp.files) {
+        const label = (prompt(`Nom de l'image (${f.name}) :`, suggestions.shift() || d.name) || '').trim() || d.name;
+        const blob = await S.compressImage(f);
+        await S.put('specimens', { id: `${key}:${S.uid()}`, label, blob, name: f.name, added: Date.now() });
+      }
+      inp.value = ''; drawOwn(key);
     }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
