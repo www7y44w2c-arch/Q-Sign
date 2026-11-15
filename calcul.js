@@ -189,7 +189,8 @@
     toggle: () => chronoToggle(),
     stop: () => chronoStop(),
     schedule,
-    openPlanning
+    openPlanning,
+    edit: (onDone) => openEdit(today(), onDone || null)
   };
 
   let view = 'day', day = today(), month = today().slice(0, 7), buf = '', flash = '', clock = null;
@@ -232,7 +233,7 @@
         <span class="lcd-clock mono">${nowHM()}</span>
       </div>
       <div class="lcd-entry mono">${buf ? esc(buf) : flash ? esc(flash) : '&nbsp;'}</div>
-      <div class="lcd-total"><strong class="mono">${fmt(e.n)}</strong><span>dossiers</span></div>
+      <div class="lcd-total"><button type="button" class="lcd-edit" id="calcEdit" aria-label="Corriger les chiffres de ce jour">✎ Corriger</button><strong class="mono">${fmt(e.n)}</strong><span>dossiers</span></div>
       <div class="lcd-stats">
         <div><small>Heures</small><strong class="mono">${fmt1(h)}</strong></div>
         <div><small>Cadence/h</small><strong class="mono">${h ? fmt1(e.n / h) : '—'}</strong></div>
@@ -263,6 +264,7 @@
   function bindDisplay() {
     body.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => { day = shiftDay(day, Number(b.dataset.d)); if (day > today()) day = today(); buf = ''; flash = ''; updateDisplay(); }));
     body.querySelector('#shiftEdit').addEventListener('click', openShift);
+    body.querySelector('#calcEdit').addEventListener('click', () => openEdit(day));
     const date = body.querySelector('#calcDate');
     date.addEventListener('change', () => { if (date.value && date.value <= today()) { day = date.value; buf = ''; flash = ''; updateDisplay(); } });
   }
@@ -397,18 +399,73 @@
     const el = App.sheet(`Historique · ${monthLabel(month)}`, m.days.length
       ? `<div class="list">${m.days.map(([d, v]) => `<button class="item" data-day="${d}"><span class="item-ic mono">${d.slice(8)}</span><span class="item-txt"><strong>${fmt(v.n)} dossiers</strong><small>${esc(dayLabel(d))} · ${fmt1(v.h)} h · ${v.h ? fmt1(v.n / v.h) + '/h' : '—'}</small></span><span class="item-go">›</span></button>`).join('')}</div>`
       : '<p class="empty">Aucun jour saisi ce mois-ci.</p>');
-    el.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { day = b.dataset.day; view = 'day'; App.closeSheet(); render(); }));
+    el.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => openEdit(b.dataset.day)));
+  }
+
+  // ---------- Corriger un jour, remettre à zéro, annuler ----------
+  const UNDO = 'bv.calcul.undo';
+  const snapshot = label => S.writeLocal(UNDO, { label, data: JSON.parse(JSON.stringify(data)) });
+  let after = null; // rafraîchit l'écran qui a ouvert le panneau (accueil ou calcul)
+  const refresh = () => { if (App.current === 'calcul') render(); if (after) after(); };
+  function openEdit(d, onDone) {
+    if (onDone !== undefined) after = onDone; else if (App.current === 'calcul') after = null;
+    syncLive();
+    const e = entry(d), chrono = segs(d).length > 0, h = Math.round(hoursOf(d) * 100) / 100;
+    const el = App.sheet(`Corriger · ${dayLabel(d)}`, `<form class="form" id="editForm">
+        <div class="field-row">
+          <label class="field"><span>Dossiers</span><input name="n" type="number" inputmode="numeric" min="0" step="1" value="${e.n}" /></label>
+          <label class="field"><span>Heures travaillées</span><input name="h" type="text" inputmode="decimal" pattern="[0-9]+([,.][0-9]+)?" value="${String(h).replace('.', ',')}" ${chrono ? 'disabled' : ''} /></label>
+        </div>
+        ${chrono ? '<p class="foot">Les heures viennent du chrono : <button type="button" class="link" id="editShift">modifier les horaires et pauses</button>.</p>' : ''}
+        <button class="btn btn-primary" type="submit">Enregistrer</button>
+        <button class="btn btn-danger" type="button" id="editReset">Remettre ce jour à zéro</button>
+      </form>`);
+    const form = el.querySelector('#editForm');
+    form.addEventListener('submit', ev => {
+      ev.preventDefault();
+      const patch = { n: Math.max(0, Math.round(Number(form.elements.n.value) || 0)) };
+      if (!chrono) patch.h = Math.max(0, Math.min(24, Number(String(form.elements.h.value).replace(',', '.')) || 0));
+      setDay(d, patch); App.closeSheet(); App.toast('Chiffres corrigés'); refresh();
+    });
+    const sh = el.querySelector('#editShift');
+    if (sh) sh.addEventListener('click', () => { day = d; openShift(); });
+    el.querySelector('#editReset').addEventListener('click', () => {
+      if (!confirm(`Effacer les dossiers, heures et chrono de : ${dayLabel(d)} ?`)) return;
+      snapshot(dayLabel(d)); delete data.days[d]; save();
+      App.closeSheet(); App.toast('Jour remis à zéro · annulable dans ⚙'); refresh();
+    });
+  }
+  function resetScope(kind) {
+    const m = month, label = { today: "aujourd'hui", month: monthLabel(m), all: 'tous les chiffres' }[kind];
+    if (!confirm(kind === 'all' ? 'Effacer TOUS tes chiffres (dossiers, heures, chrono) ? Ton planning et tes réglages sont conservés.' : `Effacer les chiffres de : ${label} ?`)) return;
+    snapshot(label);
+    if (kind === 'today') delete data.days[today()];
+    else if (kind === 'month') { Object.keys(data.days).filter(d => d.startsWith(m)).forEach(d => delete data.days[d]); delete data.planned[m]; }
+    else { data.days = {}; data.planned = {}; }
+    save(); App.closeSheet(); App.toast('Remis à zéro · annulable dans ⚙'); refresh();
   }
 
   function openSettings() {
+    const undo = S.readLocal(UNDO, null);
     const el = App.sheet('Réglages et sauvegarde', `<form class="form" id="calcSettings">
         <label class="field"><span>Cadence attendue (dossiers / heure)</span><input name="rate" type="number" inputmode="numeric" min="1" value="${data.rate}" /></label>
         ${data.tiers.map((t, i) => `<label class="field"><span>Palier ${i + 1} (dossiers / mois)</span><input name="tier${i}" type="number" inputmode="numeric" min="0" step="100" value="${t}" /></label>`).join('')}
         <button class="btn btn-primary" type="submit">Enregistrer</button>
       </form>
       <button class="btn" id="calcPlanning">🗓 Mon planning et prénom</button>
+      <span class="label">REMETTRE À ZÉRO</span>
+      <div class="reset-grid"><button class="btn" data-reset="today">Aujourd'hui</button><button class="btn" data-reset="month">${esc(monthLabel(month))}</button><button class="btn btn-danger" data-reset="all">Tout</button></div>
+      ${undo ? `<button class="btn" id="calcUndo">↶ Annuler la remise à zéro (${esc(undo.label)})</button>` : ''}
+      <p class="foot">Planning, prénom et réglages sont conservés. Pour corriger un seul jour : « ✎ Corriger » dans la calculette, ou Mois → Historique.</p>
+      <span class="label">SAUVEGARDE</span>
       <p class="foot">Tes chiffres sont enregistrés uniquement sur ce téléphone. Exporte-les de temps en temps.</p>
       <div class="actions"><button class="btn" id="calcExport">Exporter</button><label class="btn">Importer<input id="calcImport" type="file" accept="application/json,.json" hidden /></label></div>`);
+    el.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => resetScope(b.dataset.reset)));
+    const ub = el.querySelector('#calcUndo');
+    if (ub) ub.addEventListener('click', () => {
+      data = Object.assign({}, DEFAULT, undo.data); save(); S.writeLocal(UNDO, null);
+      App.closeSheet(); App.toast('Remise à zéro annulée'); refresh();
+    });
     el.querySelector('#calcSettings').addEventListener('submit', ev => {
       ev.preventDefault(); const f = new FormData(ev.target);
       data.rate = Math.max(1, Number(f.get('rate')) || 80);

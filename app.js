@@ -68,7 +68,9 @@ window.App = (() => {
   return { go, header, sheet, closeSheet, toast, view, on: (name, fn) => { enter[name] = fn; }, get current() { return current; } };
 })();
 
-// ---------- Accueil : tableau de bord ----------
+// ---------- Accueil : tableau de bord simple ----------
+// Peu de chiffres : un anneau pour le jour, une phrase pour se situer, une barre pour le mois, un graphique pour la semaine.
+// Le détail complet reste dans l'onglet Calcul.
 (() => {
   const $ = s => document.querySelector(s);
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
@@ -76,108 +78,131 @@ window.App = (() => {
   const pad = n => String(n).padStart(2, '0');
   const fmtDur = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} h ${pad(m)}` : `${m} min`; };
   const fmtWait = min => min >= 1440 ? `${Math.floor(min / 1440)} j ${Math.floor(min % 1440 / 60)} h` : fmtDur(min);
-  const dayName = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
-  let tick = null, selected = 6, wkMode = BVStore.readLocal('bv.homeWeek', 'n') === 'h' ? 'h' : 'n';
+  const dayShort = d => new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+  const RING = 2 * Math.PI * 52;
+  let tick = null, selected = -1, wkMode = BVStore.readLocal('bv.homeWeek', 'n') === 'h' ? 'h' : 'n';
 
-  // Carte planning : horaires du jour, temps écoulé / restant, objectif, prochain service.
-  function renderPlan(sc) {
-    const T = sc.today, nx = sc.next;
-    const nextTxt = nx ? `Prochain : ${dayName(nx.d)} ${nx.s} · dans ${fmtWait(nx.inMin)}` : '';
-    let hours = '', sum = '', right = '', pct = 0;
-    if (!sc.has) { sum = 'Ajoute ton prénom et tes horaires'; right = '✎'; }
-    else if (!T) { hours = 'Repos'; sum = nextTxt || 'Aucun service prévu'; }
-    else {
-      hours = `${T.s} → ${T.e} · ${fmt1(T.planH)} h`; pct = T.pct;
-      const left = T.target - sc.n;
-      if (T.phase === 'before') { sum = `Objectif ${fmt(T.target)} dossiers`; right = `début dans ${fmtWait(T.startsIn)}`; }
-      else if (T.phase === 'during') {
-        sum = left > 0 ? `Encore ${fmt(left)} / ${fmt(T.target)} · ${fmt1(left / Math.max(T.remaining / 60, 1 / 60))}/h` : `Objectif ${fmt(T.target)} atteint ✓`;
-        right = `${fmtDur(T.elapsed)} · reste ${fmtDur(T.remaining)}`;
-      } else { sum = left > 0 ? `${fmt(sc.n)} / ${fmt(T.target)} · manque ${fmt(left)}` : `Objectif ${fmt(T.target)} atteint ✓`; right = nx ? `${dayName(nx.d).slice(0, 3)}. ${nx.s}` : 'terminé'; }
-    }
-    $('#planHours').textContent = hours;
-    $('#planSummary').textContent = sum;
-    $('#planRight').textContent = right;
-    $('#planBar').style.width = `${Math.min(100, pct)}%`;
-  }
-
-  function render() {
-    const C = window.SkamCalc; if (!C) return;
-    const now = new Date(), sc = C.schedule();
-    const hr = now.getHours(); $('#homeHello').textContent = (hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour') + (sc.name ? ` ${sc.name}` : '');
-    renderPlan(sc);
-    $('#homeDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    $('#homeClock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-    // Aujourd'hui
-    const t = C.today();
+  // Aujourd'hui : anneau (dossiers / objectif du jour) + où j'en suis + horaires.
+  function renderToday(C, sc) {
+    const t = C.today(), T = sc.today, st = C.state(), rate = C.rate();
+    const goal = T ? T.target : t.target; // objectif du planning, sinon heures faites × cadence
+    const ratio = goal ? Math.min(1, t.n / goal) : 0;
     $('#homeCount').textContent = fmt(t.n);
-    $('#homeHours').textContent = t.h ? `${fmt1(t.h)} h` : '—';
-    $('#homePace').textContent = t.h ? t.pace : '—';
-    $('#homePct').textContent = t.target ? `${Math.round(t.n / t.target * 100)} %` : '—';
-    $('#homeBar').style.width = `${t.target ? Math.min(100, t.n / t.target * 100) : 0}%`;
-    const st = C.state();
-    $('#homeStatus').textContent = { running: `● en cours depuis ${st.since}`, paused: `⏸ en pause depuis ${st.since}`, done: `■ shift terminé à ${st.since}`, idle: 'chrono à l’arrêt' }[st.state];
+    $('#homeOf').textContent = goal ? `/ ${fmt(goal)}` : 'dossiers';
+    const fg = $('#homeRingFg');
+    fg.style.strokeDasharray = `${RING}`; fg.style.strokeDashoffset = `${RING * (1 - ratio)}`;
+    fg.classList.toggle('hit', !!goal && t.n >= goal);
+    $('#homeRing').setAttribute('aria-label', goal ? `${t.n} dossiers sur un objectif de ${goal}` : `${t.n} dossiers`);
+
+    // Où j'en suis : comparaison au rythme attendu pour les heures déjà faites.
+    const pace = $('#homePace'); let msg = '';
+    pace.className = 'pace';
+    if (t.h > 0) {
+      const diff = t.n - t.h * rate, margin = rate / 4;
+      if (diff > margin) { pace.textContent = `En avance · +${fmt(diff)}`; pace.classList.add('good'); }
+      else if (diff < -margin) { pace.textContent = `En retard · −${fmt(-diff)}`; pace.classList.add('warn'); }
+      else pace.textContent = 'Dans le rythme';
+    } else pace.textContent = '';
+    if (goal && t.n >= goal) msg = 'Objectif du jour atteint ✓';
+    else if (T && T.phase === 'during' && T.remaining > 0) msg = `Vise ${fmt((goal - t.n) / Math.max(T.remaining / 60, 0.25))}/h jusqu'à ${T.e}`;
+    else if (T && T.phase === 'before') msg = `Service à ${T.s}`;
+    else if (!T && sc.has) msg = sc.next ? `Repos · reprise ${dayShort(sc.next.d)} ${sc.next.s}` : 'Repos';
+    else if (!t.n && !t.h) msg = sc.has ? '' : 'Lance ▶ ou touche « Bonjour » pour ton planning';
+    $('#homeMsg').textContent = msg;
+
+    // Ligne du service : horaires + temps restant (barre de temps) ou état du chrono.
+    const box = $('#homeShiftBox'); let left = '', right = '', pct = 0, showBar = false;
+    if (T) {
+      showBar = true; pct = T.pct; left = `${T.s} → ${T.e}`;
+      right = T.phase === 'before' ? `dans ${fmtWait(T.startsIn)}` : T.phase === 'during' ? `reste ${fmtDur(T.remaining)}` : 'terminé';
+    }
+    const chrono = { running: `● chrono depuis ${st.since}`, paused: `⏸ pause depuis ${st.since}`, done: `■ fini à ${st.since}`, idle: '' }[st.state];
+    if (chrono) left = left ? `${left} · ${chrono}` : chrono;
+    box.hidden = !left && !right;
+    box.querySelector('.meter').hidden = !showBar;
+    $('#planBar').style.width = `${Math.min(100, pct)}%`;
+    $('#homeShift').textContent = left; $('#homeShiftRight').textContent = right;
+
     const cb = $('#homeChrono');
     cb.innerHTML = st.state === 'running' ? '⏸' : '▶';
     cb.setAttribute('aria-label', st.state === 'running' ? 'Mettre en pause' : st.state === 'idle' ? 'Démarrer le shift' : 'Reprendre');
     cb.classList.toggle('on', st.state === 'running');
+  }
 
-    // Mois : total, prochain palier, projection
+  // Mois : total, barre vers les paliers, une phrase.
+  function renderMonth(C, now) {
     const m = C.month(), tiers = C.tiers(), max = Math.max(...tiers, m.total, 1);
-    const next = tiers.find(x => x > m.total);
+    const next = tiers.find(x => x > m.total), k = next ? tiers.indexOf(next) + 1 : tiers.length;
     $('#homeMonthLabel').textContent = now.toLocaleDateString('fr-FR', { month: 'long' }).toUpperCase();
     $('#homeMonthTotal').textContent = fmt(m.total);
-    $('#homeMonthOf').textContent = next ? `/ ${fmt(next)}` : 'tous paliers atteints';
-    $('#homeNext').textContent = next ? (m.remaining ? `${fmt((next - m.total) / m.remaining)}/jour pour P${tiers.indexOf(next) + 1}` : `reste ${fmt(next - m.total)}`) : '✓ P3 atteint';
+    $('#homeMonthOf').textContent = next ? `/ ${fmt(next)}` : `P${k} atteint ✓`;
+    const nx = $('#homeNext'); nx.className = 'small';
+    if (!next) nx.textContent = '';
+    else if (m.worked && m.projection >= next) { nx.textContent = `P${k} en bonne voie`; nx.classList.add('good'); }
+    else if (m.remaining) { nx.textContent = `${fmt((next - m.total) / m.remaining)}/jour pour P${k}`; nx.classList.add('muted'); }
+    else { nx.textContent = `reste ${fmt(next - m.total)}`; nx.classList.add('muted'); }
     $('#homeTierFill').style.width = `${Math.min(100, m.total / max * 100)}%`;
     const box = $('#homeTiers');
     box.querySelectorAll('.tm-tick').forEach(x => x.remove());
     tiers.forEach((x, i) => box.insertAdjacentHTML('beforeend', `<span class="tm-tick ${m.total >= x ? 'hit' : ''}" style="left:${x / max * 100}%"><i></i><b class="mono">P${i + 1}</b></span>`));
-    $('#homeProj').textContent = fmt(m.projection);
-    $('#homeAvg').textContent = m.worked ? fmt(m.perDay) : '—';
-    $('#homeDays').textContent = `${m.worked}/${m.planned}`;
+  }
 
-    // Graphique : dossiers des 7 derniers jours (pointillé = objectif) ou heures de la semaine (pointillé = prévu).
+  // Semaine : barres (vert = objectif atteint) + une phrase de résumé ; toucher une barre pour le détail.
+  function renderWeek(C, sc) {
     const H = wkMode === 'h';
     const w = H ? sc.week.map(x => ({ d: x.d, val: x.h, target: x.planH, n: x.n, today: x.today, future: x.future }))
                 : C.week().map((x, i) => ({ d: x.d, val: x.n, target: x.target, h: x.h, today: i === 6 }));
     const top = Math.max(1, ...w.map(x => Math.max(x.val, x.target)));
-    const todayIdx = w.findIndex(x => x.today);
-    if (selected < 0 || selected > 6) selected = todayIdx;
     document.querySelectorAll('[data-wk]').forEach(b => { const on = b.dataset.wk === wkMode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
-    $('#homeWeekLabel').textContent = H ? 'SEMAINE' : '7 JOURS';
-    const doneH = sc.week.reduce((s, x) => s + x.h, 0), planH = sc.week.reduce((s, x) => s + x.planH, 0);
-    $('#homeWeekTotal').textContent = H ? `${fmt1(doneH)} h${planH ? ` / ${fmt1(planH)} h` : ''}` : `${fmt(w.reduce((s, x) => s + x.val, 0))} dossiers`;
+    $('#homeWeekLabel').textContent = H ? 'MA SEMAINE' : '7 DERNIERS JOURS';
     $('#homeWeek').setAttribute('aria-label', H ? 'Heures faites et prévues, semaine en cours' : 'Dossiers par jour sur 7 jours');
     $('#homeWeek').innerHTML = w.map((x, i) => {
       const lbl = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'narrow' });
       const long = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+      const hit = x.target > 0 && x.val >= x.target;
       const aria = H ? `${long} : ${fmt1(x.val)} heures${x.target ? `, prévu ${fmt1(x.target)}` : ''}` : `${long} : ${x.val} dossiers${x.target ? `, objectif ${x.target}` : ''}`;
-      return `<button class="wk-col ${i === selected ? 'sel' : ''} ${x.future ? 'future' : ''}" role="listitem" data-i="${i}" aria-label="${aria}">
+      return `<button class="wk-col ${i === selected ? 'sel' : ''} ${x.future ? 'future' : ''} ${hit ? 'hit' : ''}" role="listitem" data-i="${i}" aria-label="${aria}">
         <span class="wk-area">${x.target ? `<span class="wk-target" style="bottom:${x.target / top * 100}%"></span>` : ''}<span class="wk-bar" style="height:${x.val ? Math.max(3, x.val / top * 100) : 0}%"></span></span>
         <span class="wk-lbl mono">${x.today ? 'auj' : lbl}</span></button>`;
     }).join('');
-    const showDetail = i => {
-      const x = w[i], d = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
-      $('#homeWeekDetail').innerHTML = H
-        ? `<b>${d}</b> · ${x.future ? 'à venir' : `${fmt1(x.val)} h faites`}${x.target ? ` · ${fmt1(x.target)} h prévues` : ' · repos'}${x.n ? ` · ${fmt(x.n)} dossiers` : ''}`
-        : `<b>${d}</b> · ${fmt(x.val)} dossiers${x.h ? ` · ${fmt1(x.h)} h · ${fmt1(x.val / x.h)}/h` : ''}${x.target ? ` · objectif ${fmt(x.target)}` : ''}`;
+    const summary = () => {
+      if (H) { const done = sc.week.reduce((s, x) => s + x.h, 0), plan = sc.week.reduce((s, x) => s + x.planH, 0); return plan ? `${fmt1(done)} h faites sur ${fmt1(plan)} h prévues` : `${fmt1(done)} h faites · ajoute ton planning pour les heures prévues`; }
+      const worked = w.filter(x => x.val || x.h), hits = worked.filter(x => x.target && x.val >= x.target).length;
+      return worked.length ? `Objectif atteint ${hits} jour${hits > 1 ? 's' : ''} sur ${worked.length}` : 'Pas encore de dossiers cette semaine';
     };
-    $('#homeWeek').querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => { selected = Number(b.dataset.i); $('#homeWeek').querySelectorAll('.wk-col').forEach(c => c.classList.toggle('sel', c === b)); showDetail(selected); }));
-    if (H && selected === todayIdx && !w[selected].val) $('#homeWeekDetail').innerHTML = planH ? `Reste ${fmt1(Math.max(0, planH - doneH))} h prévues cette semaine · <span class="dash-key"></span> prévu` : 'Ajoute ton planning pour voir les heures prévues';
-    else if (selected !== todayIdx || w[selected].val) showDetail(selected);
-    else $('#homeWeekDetail').innerHTML = 'Touche une barre · <span class="dash-key"></span> objectif du jour';
+    const detail = i => {
+      const x = w[i], d = new Date(x.d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' });
+      return H ? `<b>${d}</b> · ${x.future ? 'à venir' : `${fmt1(x.val)} h`}${x.target ? ` / ${fmt1(x.target)} h prévues` : ' · repos'}`
+               : `<b>${d}</b> · ${fmt(x.val)} dossiers${x.target ? ` / ${fmt(x.target)}` : ''}`;
+    };
+    $('#homeWeekDetail').innerHTML = selected >= 0 ? detail(selected) : summary();
+    $('#homeWeek').querySelectorAll('[data-i]').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.i); selected = selected === i ? -1 : i; // retoucher la barre revient au résumé
+      $('#homeWeek').querySelectorAll('.wk-col').forEach(c => c.classList.toggle('sel', Number(c.dataset.i) === selected));
+      $('#homeWeekDetail').innerHTML = selected >= 0 ? detail(selected) : summary();
+    }));
+  }
+
+  function render() {
+    const C = window.SkamCalc; if (!C) return;
+    const now = new Date(), sc = C.schedule(), hr = now.getHours();
+    $('#homeHello').textContent = (hr >= 18 || hr < 5 ? 'Bonsoir' : 'Bonjour') + (sc.name ? ` ${sc.name}` : '');
+    $('#homeDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#homeClock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    renderToday(C, sc); renderMonth(C, now); renderWeek(C, sc);
   }
 
   $('#homePlus').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.add(1); render(); });
   $('#homeChrono').addEventListener('click', ev => { ev.stopPropagation(); window.SkamCalc && window.SkamCalc.toggle(); render(); });
-  const open = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
+  // Appui long sur +1 : corriger les chiffres du jour.
+  let press = null;
+  $('#homePlus').addEventListener('pointerdown', () => { press = setTimeout(() => { press = 'long'; window.SkamCalc && window.SkamCalc.edit(render); }, 600); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(e => $('#homePlus').addEventListener(e, () => { if (press !== 'long') clearTimeout(press); }));
+  $('#homePlus').addEventListener('click', ev => { if (press === 'long') { ev.stopImmediatePropagation(); press = null; } }, true);
+  const open = (el, fn) => { el.addEventListener('click', fn); el.addEventListener('keydown', e => { if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fn(); } }); };
   open($('#homeToday'), () => App.go('calcul'));
   open($('#homeMonth'), () => App.go('calcul', { view: 'month' }));
-  const editPlan = () => window.SkamCalc && window.SkamCalc.openPlanning(render);
-  open($('#homePlan'), editPlan);
-  open($('#homeHelloBtn'), editPlan);
+  open($('#homeHelloBtn'), () => window.SkamCalc && window.SkamCalc.openPlanning(render));
   document.querySelectorAll('[data-wk]').forEach(b => b.addEventListener('click', () => { wkMode = b.dataset.wk; BVStore.writeLocal('bv.homeWeek', wkMode); selected = -1; render(); }));
   App.on('home', () => {
     selected = -1; render();
